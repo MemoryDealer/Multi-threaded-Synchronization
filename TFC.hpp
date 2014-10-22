@@ -19,18 +19,15 @@
 class TFC
 {
 public:
-	explicit TFC(const unsigned int numPhaserProbes);
+	explicit TFC(void);
 	~TFC(void);
 
 	// Sets up server socket, binds and begins listening.
 	// Returns zero on success, otherwise the error code is returned.
 	int init(void);
 
-	// Spawns a thread with function launchProbes().
-	void initProbeLaunching(void);
-
 	// Accept incoming probe connections and register them.
-	int launchProbes(void);
+	void launchProbes(void);
 
 	// Accept requests from probes and process them.
 	int navigateAsteroidField(void);
@@ -45,7 +42,7 @@ private:
 	AsteroidContainer m_asteroids;
 	std::vector<Probe> m_probes;
 	SOCKET m_socket;
-	bool m_fleetAlive, m_exitedAsteroidField;
+	bool m_fleetAlive, m_inAsteroidField;
 };
 
 // ================================================ //

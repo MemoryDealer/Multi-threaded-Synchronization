@@ -19,12 +19,14 @@ int main(int argc, char** argv)
 		return 1;
 	}
 
-	TFC tfc(5);
+	// Initialize TFC (server).
+	TFC tfc;
 
+	int probeID = 0;
 	// Prepare probes and launch them.
 	while (tfc.getNumProbes() < 12){
-		Probe probe(0, 0, 0);
-		probe.launch();
+		Probe* probe = new Probe(probeID++, 0, Probe::Type::PHASER);
+		probe->launch();
 		printf("Waiting for probes...\n");
 		Sleep(5000);
 
@@ -34,8 +36,6 @@ int main(int argc, char** argv)
 	while (true){
 		tfc.navigateAsteroidField();
 	}
-
-	getchar();
 
 	// Terminate use of WS2_32.DLL.
 	WSACleanup();

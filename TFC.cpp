@@ -14,12 +14,12 @@ const std::string TFC::Port = "27666";
 
 // ================================================ //
 
-TFC::TFC(const unsigned int numPhaserProbes) :
+TFC::TFC(void) :
 m_asteroids(),
 m_probes(),
 m_socket(INVALID_SOCKET),
 m_fleetAlive(true),
-m_exitedAsteroidField(false)
+m_inAsteroidField(false)
 {
 	int ret = this->init();
 	printf("setupServer() = %d\n", ret);
@@ -79,48 +79,47 @@ int TFC::init(void)
 		return SOCKET_ERROR;
 	}
 
+	// Spawn a thread to accept new probe connections, since accept() blocks.
 	std::thread t(&TFC::launchProbes, this);
-	t.detach();
+	// Allow continued execution of calling thread.
+	t.detach(); 
 
 	return 0;
 }
 
 // ================================================ //
 
-void TFC::initProbeLaunching(void)
+void TFC::launchProbes(void)
 {
-	std::thread t(&TFC::launchProbes, this);
-	t.detach();
-}
-
-// ================================================ //
-
-int TFC::launchProbes(void)
-{
-	while (true){
+	// Don't allow new probes to launch once we've entered the asteroid field.
+	while (!m_inAsteroidField){
 		// Accept initial probe connections.
 		SOCKET newProbeSocket = accept(m_socket, nullptr, nullptr);
 		if (newProbeSocket == INVALID_SOCKET){
+			printf("TFC: accept() failed: %ld\n", WSAGetLastError());
 			closesocket(m_socket);
-			return 1;
 		}
 
-		printf("Connection accepted...\n");
-
-		// Receive probe data.
-		int r = 5;
+		// Receive probe launch request.
+		int r = 0;
 		Probe::Message msg;
-		while (r > 1){
-			r = recv(newProbeSocket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
-			if (r > 0){
-				printf("Bytes received: %d\ntype=%d\n", r, msg.type);
-				closesocket(newProbeSocket);
-				r = 0;
+		r = recv(newProbeSocket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
+		if (r > 0){
+			if (msg.type == Probe::MessageType::LAUNCH){
+				printf("Launch request received.\n");
+
+				Probe::Message confirm;
+				confirm.type = Probe::MessageType::LAUNCH;
+
+				int s = send(newProbeSocket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+				if (s > 0){
+					printf("Sent launch confirmation.\n");
+				}
 			}
+			closesocket(newProbeSocket);
+			r = 0;
 		}
 	}
-
-	return 0;
 }
 
 // ================================================ //
@@ -135,7 +134,7 @@ int TFC::navigateAsteroidField(void)
 	}
 
 	// Receive the data from newly connected client.
-	int r = 1;
+	int r = 5;
 	while (r > 0){
 		
 	}

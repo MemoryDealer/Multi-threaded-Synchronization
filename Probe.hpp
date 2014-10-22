@@ -29,14 +29,17 @@ public:
 	// Thread which processes probe actions.
 	void update(void);
 
+	// Prints an error message with Probe ID.
+	void reportError(const char* msg);
+
 	enum Type{
-		SCOUT = 0,
+		SCOUT = 1,
 		PHOTON,
 		PHASER
 	};
 
 	enum MessageType{
-		LAUNCH = 0
+		LAUNCH = 1
 	};
 
 	struct Message{
@@ -48,6 +51,7 @@ private:
 	unsigned int m_id;
 	unsigned int m_type;
 	SOCKET m_socket;
+	bool m_alive;
 };
 
 // ================================================ //
