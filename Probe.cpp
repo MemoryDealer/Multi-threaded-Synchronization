@@ -84,6 +84,7 @@ int Probe::launch(void)
 	}
 
 	printf("Bytes sent: %ld\n", i);
+	
 
 	// Wait for confirmation of launch.
 	ZeroMemory(&msg, sizeof(msg));
@@ -93,16 +94,19 @@ int Probe::launch(void)
 		closesocket(m_socket);
 		return 1;
 	}
-
-	if (msg.type == MessageType::LAUNCH){
-		printf("Probe %d has received confirmation to launch.\n", m_id);
+	if (i > 0){
+		if (msg.type == MessageType::LAUNCH){
+			printf("Probe %d has received confirmation to launch.\n", m_id);
+			std::thread t(&Probe::update, this);
+			t.detach();
+		}
+		else{
+			printf("Probe %d denied launch.\n", m_id);
+		}
 	}
 	else{
-		printf("Probe %d denied launch.\n", m_id);
+		printf("Connection closed.\n");
 	}
-
-	std::thread t(&Probe::update, this);
-	t.detach();
 
 	return 0;
 }

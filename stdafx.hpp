@@ -24,6 +24,7 @@
 #include <memory>
 #include <thread>
 #include <string>
+#include <sstream>
 #include <vector>
 #include <list>
 #include <cstdio>
@@ -35,6 +36,17 @@
 #include <WinSock2.h>
 #include <WS2tcpip.h>
 #include <IPHlpApi.h>
+
+// ================================================ //
+
+// Converts anything to a std::string.
+template<typename T>
+static std::string toString(const T& value)
+{
+	std::ostringstream oss;
+	oss << value;
+	return oss.str();
+}
 
 // ================================================ //
 

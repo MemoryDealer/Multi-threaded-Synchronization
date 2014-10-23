@@ -68,12 +68,14 @@
   <ItemGroup>
     <ClCompile Include="Asteroid.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="Net.cpp" />
     <ClCompile Include="Probe.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="TFC.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Asteroid.hpp" />
+    <ClInclude Include="Net.hpp" />
     <ClInclude Include="Probe.hpp" />
     <ClInclude Include="Singleton.hpp" />
     <ClInclude Include="stdafx.hpp" />

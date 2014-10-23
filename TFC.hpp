@@ -13,6 +13,7 @@
 
 #include "Asteroid.hpp"
 #include "Probe.hpp"
+#include "Net.hpp"
 
 // ================================================ //
 
@@ -40,7 +41,7 @@ public:
 	static const std::string Port;
 private:
 	AsteroidContainer m_asteroids;
-	std::vector<Probe> m_probes;
+	std::vector<IPAddress> m_probes;
 	SOCKET m_socket;
 	bool m_fleetAlive, m_inAsteroidField;
 };

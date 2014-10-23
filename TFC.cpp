@@ -79,7 +79,7 @@ int TFC::init(void)
 		return SOCKET_ERROR;
 	}
 
-	// Spawn a thread to accept new probe connections, since accept() blocks.
+	// Spawn a thread to accept new probe connections.
 	std::thread t(&TFC::launchProbes, this);
 	// Allow continued execution of calling thread.
 	t.detach(); 
@@ -94,29 +94,38 @@ void TFC::launchProbes(void)
 	// Don't allow new probes to launch once we've entered the asteroid field.
 	while (!m_inAsteroidField){
 		// Accept initial probe connections.
-		SOCKET newProbeSocket = accept(m_socket, nullptr, nullptr);
-		if (newProbeSocket == INVALID_SOCKET){
+		struct sockaddr_in probeInfo = { 0 };
+		int size = sizeof(probeInfo);
+		SOCKET probeSocket = accept(m_socket, reinterpret_cast<struct sockaddr*>(&probeInfo), &size);
+		if (probeSocket == INVALID_SOCKET){
 			printf("TFC: accept() failed: %ld\n", WSAGetLastError());
-			closesocket(m_socket);
+			closesocket(probeSocket);
+			continue;
 		}
+
+		// Display new connection info.
+		char* host = inet_ntoa(probeInfo.sin_addr);
+		int port = ntohs(probeInfo.sin_port);
+		IPAddress ip(host, port);
+		printf("New Probe: %s:%d\n", host, port);
 
 		// Receive probe launch request.
 		int r = 0;
 		Probe::Message msg;
-		r = recv(newProbeSocket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
+		r = recv(probeSocket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
 		if (r > 0){
 			if (msg.type == Probe::MessageType::LAUNCH){
 				printf("Launch request received.\n");
 
 				Probe::Message confirm;
-				confirm.type = Probe::MessageType::LAUNCH;
+				confirm.type = Probe::MessageType::LAUNCH - 1;
 
-				int s = send(newProbeSocket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+				int s = send(probeSocket, reinterpret_cast<const char*>(&confirm), sizeof(confirm), 0);
 				if (s > 0){
 					printf("Sent launch confirmation.\n");
 				}
 			}
-			closesocket(newProbeSocket);
+			closesocket(probeSocket);
 			r = 0;
 		}
 	}

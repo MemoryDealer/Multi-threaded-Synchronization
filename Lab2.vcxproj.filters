@@ -30,6 +30,9 @@
     <ClCompile Include="Probe.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Net.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="TFC.hpp">
@@ -45,6 +48,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Singleton.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Net.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
