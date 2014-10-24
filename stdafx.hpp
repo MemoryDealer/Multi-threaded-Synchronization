@@ -12,11 +12,15 @@
 // ================================================ //
 
 // Define Windows version.
+#define STRICT
 #define _WIN32_WINNT 0x0600
-#define WIN32_LEAN_AND_MEAN
+#ifndef WIN32_LEAN_AND_MEAN
+	#define WIN32_LEAN_AND_MEAN
+#endif
 
 // Some common typedefs.
 
+typedef unsigned int Uint;
 
 // ================================================ //
 
@@ -31,6 +35,10 @@
 
 // Windows
 #include <Windows.h>
+#include <CommCtrl.h>
+#include <commdlg.h>
+#include <Shlwapi.h>
+#include <ShlObj.h>
 
 // Network
 #include <WinSock2.h>

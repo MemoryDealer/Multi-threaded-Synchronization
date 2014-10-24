@@ -11,13 +11,12 @@
 
 // ================================================ //
 
-Probe::Probe(const unsigned int id,
-			 const int ip,
-			 const unsigned int type) :
-m_id(id),
+Probe::Probe(const Uint type) :
+m_id(0),
 m_type(type),
+m_state(1),
 m_socket(INVALID_SOCKET),
-m_alive(true)
+m_server(nullptr)
 {
 
 }
@@ -32,11 +31,10 @@ Probe::~Probe(void)
 
 // ================================================ //
 
-int Probe::launch(void)
+bool Probe::launch(void)
 {
 	// Get server address.
 	struct addrinfo* result = nullptr;
-	struct addrinfo* ptr = nullptr;
 	struct addrinfo hints;
 
 	ZeroMemory(&hints, sizeof(hints));
@@ -46,19 +44,19 @@ int Probe::launch(void)
 
 	int i = getaddrinfo("127.0.0.1", TFC::Port.c_str(), &hints, &result);
 	if (i != 0){
-		return 1;
+		return false;
 	}
 
 	// Create socket.
-	ptr = result;
-	m_socket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+	m_server = result;
+	m_socket = socket(m_server->ai_family, m_server->ai_socktype, m_server->ai_protocol);
 	if (m_socket == INVALID_SOCKET){
 		printf("PROBE: socket() failed: %ld\n", WSAGetLastError());
-		return 1;
+		return false;
 	}
 
 	// Connect to TFC.
-	i = connect(m_socket, ptr->ai_addr, static_cast<int>(ptr->ai_addrlen));
+	i = connect(m_socket, m_server->ai_addr, static_cast<int>(m_server->ai_addrlen));
 	if (i == SOCKET_ERROR){
 		printf("PROBE: connect() failed: %ld\n", WSAGetLastError());
 		closesocket(m_socket);
@@ -66,21 +64,23 @@ int Probe::launch(void)
 	}
 
 	// No longer needed.
-	freeaddrinfo(result);
+	//freeaddrinfo(result);
 
 	if (m_socket == INVALID_SOCKET){
 		printf("PROBE: Unable to connect to server: %ld\n", WSAGetLastError());
-		return 1;
+		return false;
 	}
 
 	// Send launch request.
 	Message msg;
-	msg.type = MessageType::LAUNCH;
+	msg.type = MessageType::LAUNCH_REQUEST;
+	msg.LaunchRequest.type = m_type;
+	
 	i = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
 	if (i == SOCKET_ERROR){
 		printf("PROBE: send() failed: %ld\n", WSAGetLastError());
 		closesocket(m_socket);
-		return 1;
+		return false;
 	}
 
 	printf("Bytes sent: %ld\n", i);
@@ -92,32 +92,59 @@ int Probe::launch(void)
 	if (i == SOCKET_ERROR){
 		printf("PROBE: recv() failed: %ld\n", WSAGetLastError());
 		closesocket(m_socket);
-		return 1;
+		return false;
 	}
 	if (i > 0){
-		if (msg.type == MessageType::LAUNCH){
+		if (msg.type == MessageType::CONFIRM_LAUNCH){
+			// Launch confirmed, save ID assigned by TFC.
+			m_id = msg.ConfirmLaunch.id;
 			printf("Probe %d has received confirmation to launch.\n", m_id);
 			std::thread t(&Probe::update, this);
 			t.detach();
 		}
 		else{
 			printf("Probe %d denied launch.\n", m_id);
+			return false;
 		}
 	}
 	else{
 		printf("Connection closed.\n");
+		return false;
 	}
 
-	return 0;
+	return true;
 }
 
 // ================================================ //
 
 void Probe::update(void)
 {
-	while (m_alive){
+	while (m_state != 0){
 		printf("Probe %d floating...\n", m_id);
-		Sleep(500);
+		Sleep(1000);
+
+		switch (m_type){
+		default:
+			break;
+
+		case Probe::Type::SCOUT:
+			// Connect to TFC.
+			m_socket = socket(m_server->ai_family, m_server->ai_socktype, m_server->ai_protocol);
+			if (connect(m_socket, m_server->ai_addr, 
+				static_cast<int>(m_server->ai_addrlen)) != SOCKET_ERROR){
+				// Send request with data.
+				Probe::Message msg;
+				msg.type = Probe::MessageType::SCOUT_REQUEST;
+				int s = send(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
+				if (s > 0){
+					printf("Scout probed!\n");
+				}
+
+				
+			}
+			closesocket(m_socket);
+			break;
+		}
 	}
 }
 

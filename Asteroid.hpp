@@ -18,9 +18,9 @@
 
 // Data structure to describe an asteroid.
 struct Asteroid{
-	unsigned int id;
-	unsigned int mass;
-	unsigned int discoveryTime;
+	Uint id;
+	Uint mass;
+	Uint discoveryTime;
 };
 
 // ================================================ //

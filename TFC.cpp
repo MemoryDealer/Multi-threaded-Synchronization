@@ -7,10 +7,11 @@
 // ================================================ //
 
 #include "TFC.hpp"
+#include "resource.h"
 
 // ================================================ //
 
-const std::string TFC::Port = "27666";
+const std::string TFC::Port = "27876";
 
 // ================================================ //
 
@@ -19,7 +20,9 @@ m_asteroids(),
 m_probes(),
 m_socket(INVALID_SOCKET),
 m_fleetAlive(true),
-m_inAsteroidField(false)
+m_inAsteroidField(false),
+m_shields(5),
+m_asteroidsDestroyed(0)
 {
 	int ret = this->init();
 	printf("setupServer() = %d\n", ret);
@@ -30,7 +33,6 @@ m_inAsteroidField(false)
 TFC::~TFC(void)
 {
 	closesocket(m_socket);
-	WSACleanup();
 }
 
 // ================================================ //
@@ -42,7 +44,7 @@ int TFC::init(void)
 	struct addrinfo hints;
 
 	ZeroMemory(&hints, sizeof(hints));
-	hints.ai_family = AF_INET;
+	hints.ai_family = PF_INET;
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 	hints.ai_flags = AI_PASSIVE;
@@ -91,8 +93,10 @@ int TFC::init(void)
 
 void TFC::launchProbes(void)
 {
+	Uint probeIDCtr = 1;
+
 	// Don't allow new probes to launch once we've entered the asteroid field.
-	while (!m_inAsteroidField){
+	while (m_inAsteroidField == false){
 		// Accept initial probe connections.
 		struct sockaddr_in probeInfo = { 0 };
 		int size = sizeof(probeInfo);
@@ -103,10 +107,16 @@ void TFC::launchProbes(void)
 			continue;
 		}
 
+		if (m_inAsteroidField){
+			printf("Returning from launch thread*****************\n");
+			return;
+		}
+
 		// Display new connection info.
 		char* host = inet_ntoa(probeInfo.sin_addr);
 		int port = ntohs(probeInfo.sin_port);
-		IPAddress ip(host, port);
+		IPAddress ip;
+		ip.set(std::string(host), port);
 		printf("New Probe: %s:%d\n", host, port);
 
 		// Receive probe launch request.
@@ -114,38 +124,119 @@ void TFC::launchProbes(void)
 		Probe::Message msg;
 		r = recv(probeSocket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
 		if (r > 0){
-			if (msg.type == Probe::MessageType::LAUNCH){
+			if (msg.type == Probe::MessageType::LAUNCH_REQUEST){
 				printf("Launch request received.\n");
 
+				// Send a launch confirmation back to the probe, as well as the ID.
 				Probe::Message confirm;
-				confirm.type = Probe::MessageType::LAUNCH - 1;
+				confirm.type = Probe::MessageType::CONFIRM_LAUNCH;
+				confirm.ConfirmLaunch.id = probeIDCtr++;
 
 				int s = send(probeSocket, reinterpret_cast<const char*>(&confirm), sizeof(confirm), 0);
 				if (s > 0){
-					printf("Sent launch confirmation.\n");
+					printf("Sent launch confirmation, adding to probe list.\n");
+
+					// Add probe to TFC list of probes.
+					ProbeRecord probe;
+					probe.id = confirm.ConfirmLaunch.id;
+					probe.ip = ip;
+					probe.type = msg.LaunchRequest.type;
+					probe.state = 0;					
+					m_probes.push_back(probe);
 				}
-			}
-			closesocket(probeSocket);
-			r = 0;
+			}			
 		}
+
+		// Terminate connection.
+		closesocket(probeSocket);
 	}
+}
+
+// ================================================ //
+
+void TFC::enterAsteroidField(void)
+{
+	std::thread t(&TFC::navigateAsteroidField, this);
+	t.detach();
 }
 
 // ================================================ //
 
 int TFC::navigateAsteroidField(void)
 {
-	// Accept incoming connections.
-	SOCKET clientSocket = accept(m_socket, nullptr, nullptr);
-	if (clientSocket == INVALID_SOCKET){
-		closesocket(m_socket);
-		return 1;
+	m_inAsteroidField = true;
+
+	while (m_inAsteroidField == true){
+		// Accept incoming probe requests.
+		struct sockaddr_in probeInfo = { 0 };
+		int size = sizeof(probeInfo);
+		SOCKET probeSocket = accept(m_socket, reinterpret_cast<struct sockaddr*>(&probeInfo), &size);
+		if (probeSocket == INVALID_SOCKET){
+			printf("TFC: accept() failed: %ld\n", WSAGetLastError());
+			closesocket(probeSocket);
+			continue;
+		}
+
+		char* host = inet_ntoa(probeInfo.sin_addr);
+		int port = ntohs(probeInfo.sin_port);
+		IPAddress ip(host, port);
+
+		// See if this is a launched probe.
+		bool launched = false;
+		for (std::vector<ProbeRecord>::iterator itr = m_probes.begin();
+			 itr != m_probes.end();
+			 ++itr){
+			// Re-opened sockets have a new port :(
+			//if (ip == itr->ip){
+				launched = true;
+			//}
+		}
+
+		// If not, close connection and accept the next request.
+		if (launched == false){
+			closesocket(probeSocket);
+			continue;
+		}
+
+		// Receive the request.
+		int r = 0;
+		Probe::Message msg;
+		r = recv(probeSocket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
+		if (r > 0){
+			switch (msg.type){
+			default:
+				break;
+
+			case Probe::MessageType::SCOUT_REQUEST:
+				printf("SCOUT REQUEST RECEIVED...\n");
+				break;
+
+			case Probe::MessageType::DEFENSIVE_REQUEST:
+
+				break;
+			}
+		}
+		else{
+			// Report error...
+		}
+
+		// Update.
+		if (m_asteroidsDestroyed > 55){
+			m_inAsteroidField = false;
+		}
+		else{
+			if (m_shields <= 0){
+				m_inAsteroidField = false;
+				m_fleetAlive = false;
+			}
+		}
 	}
 
-	// Receive the data from newly connected client.
-	int r = 5;
-	while (r > 0){
-		
+	if (m_fleetAlive){
+		printf("FLEET MADE IT!\n");
+	}
+	else{
+		printf("FLEET DEAD\n");
 	}
 
 	return 0;

@@ -12,19 +12,21 @@
 // ================================================ //
 
 #include "stdafx.hpp"
+#include "Asteroid.hpp"
 
 // ================================================ //
 
 class Probe
 {
 public:
-	explicit Probe(const unsigned int id,
-				   const int ip,
-				   const unsigned int type);
+	// Default initializes all member variables.
+	explicit Probe(const Uint type);
+
+	// Closes the socket.
 	~Probe(void);
 
 	// Setup probe data and connect to TFC.
-	int launch(void);
+	bool launch(void);
 
 	// Thread which processes probe actions.
 	void update(void);
@@ -32,27 +34,69 @@ public:
 	// Prints an error message with Probe ID.
 	void reportError(const char* msg);
 
+	// Getters
+
+	// Returns Probe ID in string format.
+	const Uint getID(void) const;
+
+	// Returns current Probe state in string format.
+	const Uint getState(void) const;
+
 	enum Type{
 		SCOUT = 1,
 		PHOTON,
 		PHASER
 	};
 
-	enum MessageType{
-		LAUNCH = 1
+	enum State{
+		STANDBY = 1,
+		ACTIVE
 	};
 
+	enum MessageType{
+		LAUNCH_REQUEST = 1,
+		CONFIRM_LAUNCH,
+		SCOUT_REQUEST,
+		DEFENSIVE_REQUEST
+	};
+
+	// A network message.
 	struct Message{
 		int type;
-		char buffer[512];
+		// Use a union to minimize data sent over sockets.
+		union{
+			struct{
+				Uint type;
+			} LaunchRequest;
+
+			struct{
+				Uint id;
+
+			} ConfirmLaunch;
+
+			Asteroid asteroid;
+		};
 	};
 
 private:
-	unsigned int m_id;
-	unsigned int m_type;
+	Uint m_id;
+	Uint m_type;
+	Uint m_state;
 	SOCKET m_socket;
-	bool m_alive;
+	struct addrinfo* m_server;
 };
+
+// ================================================ //
+
+// Getters
+
+inline const Uint Probe::getID(void) const{
+	return m_id;
+}
+
+inline const Uint Probe::getState(void) const{
+	return m_state;
+}
 
 // ================================================ //
 

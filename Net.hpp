@@ -13,18 +13,28 @@
 class IPAddress
 {
 public:
-	explicit IPAddress(const char* host, const int port);
+	explicit IPAddress(void);
+	explicit IPAddress(const std::string& host, const int port);
 	~IPAddress(void);
+
+	void set(const std::string& host, const int port);
 
 	// Compares the host and port.
 	bool operator==(const IPAddress& b){
-		return (strcmp(m_host, b.m_host) == 0 &&
+		return (m_host.compare(b.m_host) == 0 &&
 				m_port == b.m_port);
 	}
 
 private:
-	const char* m_host;
+	std::string m_host;
 	int m_port;
 };
+
+// ================================================ //
+
+inline void IPAddress::set(const std::string& host, const int port){
+	m_host = host;
+	m_port = port;
+}
 
 // ================================================ //

@@ -17,10 +17,22 @@
 
 // ================================================ //
 
+struct ProbeRecord{	
+	IPAddress ip;
+	Uint id;
+	Uint type;
+	Uint state;
+};
+
+// ================================================ //
+
 class TFC
 {
 public:
+	// Initializes member variables and calls init().
 	explicit TFC(void);
+
+	// Closes socket.
 	~TFC(void);
 
 	// Sets up server socket, binds and begins listening.
@@ -29,28 +41,44 @@ public:
 
 	// Accept incoming probe connections and register them.
 	void launchProbes(void);
+	
+	// Creates a thread for navigating the asteroid field and returns. This
+	// must return so the GUI can be updated.
+	void enterAsteroidField(void);
 
 	// Accept requests from probes and process them.
 	int navigateAsteroidField(void);
 
+	// Getters
+
 	// Returns number of probes launched.
 	const int getNumProbes(void) const;
+
+	// Setters
 
 	// --- //
 
 	static const std::string Port;
+
 private:
 	AsteroidContainer m_asteroids;
-	std::vector<IPAddress> m_probes;
+	std::vector<ProbeRecord> m_probes;
 	SOCKET m_socket;
 	bool m_fleetAlive, m_inAsteroidField;
+	int m_shields;
+	int m_asteroidsDestroyed;
 };
 
 // ================================================ //
 
+// Getters
+
 inline const int TFC::getNumProbes(void) const{
 	return m_probes.size();
 }
+
+// Setters
+
 
 // ================================================ //
 

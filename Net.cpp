@@ -10,7 +10,16 @@
 
 // ================================================ //
 
-IPAddress::IPAddress(const char* host, const int port) :
+IPAddress::IPAddress(void) :
+m_host(),
+m_port(0)
+{
+
+}
+
+// ================================================ //
+
+IPAddress::IPAddress(const std::string& host, const int port) :
 m_host(host),
 m_port(port)
 {
