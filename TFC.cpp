@@ -217,12 +217,21 @@ int TFC::navigateAsteroidField(void)
 				break;
 
 			case Probe::MessageType::SCOUT_REQUEST:
-				printf("SCOUT REQUEST RECEIVED...\n");
+				{
+					Probe::Message response;
+					// Ack request.
+					response.type = 0;
+					int s = send(probeSocket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
+					if (s > 0){
+						printf("SCOUT_REQUEST acked\n");
+					}
+				}
 				break;
 
 			case Probe::MessageType::DEFENSIVE_REQUEST:
-				{
+				{														  
 					Probe::Message response;
+					// Test
 					response.type = 33;
 					int s = send(probeSocket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
 					if (s > 0){
@@ -232,13 +241,17 @@ int TFC::navigateAsteroidField(void)
 				break;
 
 			case Probe::MessageType::ASTEROID_FOUND:
-
+				
+				m_asteroids.insert(msg.asteroid);
+				// Inform main GUI...
 				break;
 			}
 		}
 		else{
 			// Report error...
 		}
+
+		closesocket(probeSocket);
 
 		// Update.
 		if (m_asteroidsDestroyed > 55){
