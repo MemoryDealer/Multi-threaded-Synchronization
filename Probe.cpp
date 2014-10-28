@@ -14,7 +14,7 @@
 Probe::Probe(const Uint type) :
 m_id(0),
 m_type(type),
-m_state(1),
+m_state(Probe::State::ACTIVE),
 m_socket(INVALID_SOCKET),
 m_server(nullptr)
 {
@@ -119,31 +119,84 @@ bool Probe::launch(void)
 
 void Probe::update(void)
 {
-	while (m_state != 0){
-		printf("Probe %d floating...\n", m_id);
-		Sleep(1000);
+	while (m_state != Probe::State::DESTROYED){		
+		if (m_state == Probe::State::ACTIVE){
+			
+			switch (m_type){
+			default:
+				break;
 
-		switch (m_type){
-		default:
-			break;
+			case Probe::Type::SCOUT:
+				// Connect to TFC and send scout request.
+				m_socket = socket(m_server->ai_family, m_server->ai_socktype, m_server->ai_protocol);
+				if (connect(m_socket, m_server->ai_addr,
+					static_cast<int>(m_server->ai_addrlen)) != SOCKET_ERROR){
+					// Send request with data.
+					Probe::Message msg;
+					msg.type = Probe::MessageType::SCOUT_REQUEST;
+					int s = send(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
+					if (s > 0){
+						ZeroMemory(&msg, sizeof(msg));
+						int r = recv(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
+						if (r > 0){
+							switch (msg.type){
+							default:
+								break;
 
-		case Probe::Type::SCOUT:
-			// Connect to TFC.
-			m_socket = socket(m_server->ai_family, m_server->ai_socktype, m_server->ai_protocol);
-			if (connect(m_socket, m_server->ai_addr, 
-				static_cast<int>(m_server->ai_addrlen)) != SOCKET_ERROR){
-				// Send request with data.
-				Probe::Message msg;
-				msg.type = Probe::MessageType::SCOUT_REQUEST;
-				int s = send(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
-				if (s > 0){
-					printf("Scout probed!\n");
+							case 0:
+								break;
+							}
+						}
+					}
 				}
+				closesocket(m_socket);
 
-				
+				// Wait random length of time.
+				// ...
+				Sleep(500);
+
+				{
+					Asteroid asteroid;
+					asteroid.discoveryTime = 0;
+					asteroid.mass = 5;
+
+					m_socket = socket(m_server->ai_family, m_server->ai_socktype, m_server->ai_protocol);
+					if (connect(m_socket, m_server->ai_addr,
+						static_cast<int>(m_server->ai_addrlen)) != SOCKET_ERROR){
+						Probe::Message msg;
+						msg.type = Probe::MessageType::ASTEROID_FOUND;
+						msg.asteroid = asteroid;
+						int s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+						if (s > 0){
+							printf("Asteroid info sent.\n");
+						}
+					}
+				}
+				closesocket(m_socket);
+				break;
+
+			case Probe::Type::PHASER:
+			case Probe::Type::PHOTON:
+				// Connect to TFC and send defensive request.
+				m_socket = socket(m_server->ai_family, m_server->ai_socktype, m_server->ai_protocol);
+				if (connect(m_socket, m_server->ai_addr,
+					static_cast<int>(m_server->ai_addrlen)) != SOCKET_ERROR){
+					Probe::Message msg;
+					msg.type = Probe::MessageType::DEFENSIVE_REQUEST;
+					int s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+					if (s > 0){
+						// Receive data.
+						ZeroMemory(&msg, sizeof(msg));
+						int r = recv(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
+						if (r > 0){
+							printf("Defensive probe received: %d\n", msg.type);
+						}
+					}
+				}
+				Sleep(500);
+				closesocket(m_socket);
+				break;
 			}
-			closesocket(m_socket);
-			break;
 		}
 	}
 }

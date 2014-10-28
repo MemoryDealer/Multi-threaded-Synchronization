@@ -49,7 +49,8 @@ public:
 	};
 
 	enum State{
-		STANDBY = 1,
+		DESTROYED = 0,
+		STANDBY,
 		ACTIVE
 	};
 
@@ -57,7 +58,8 @@ public:
 		LAUNCH_REQUEST = 1,
 		CONFIRM_LAUNCH,
 		SCOUT_REQUEST,
-		DEFENSIVE_REQUEST
+		DEFENSIVE_REQUEST,
+		ASTEROID_FOUND
 	};
 
 	// A network message.
@@ -83,7 +85,7 @@ private:
 	Uint m_type;
 	Uint m_state;
 	SOCKET m_socket;
-	struct addrinfo* m_server;
+	struct addrinfo* m_server;	
 };
 
 // ================================================ //

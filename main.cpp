@@ -8,6 +8,7 @@
 
 #include "TFC.hpp"
 #include "Probe.hpp"
+#include "Timer.hpp"
 #include "resource.h"
 
 // ================================================ //
@@ -47,6 +48,20 @@ static void AddProbeToList(HWND hList, const Uint id,
 	li.iSubItem = 2;
 	strcpy_s(buf, "state");
 	SendMessage(hList, LVM_SETITEM, 0, reinterpret_cast<LPARAM>(&li));
+}
+
+// ================================================ //
+
+static void updateTime(const HWND hTime, const TFC& tfc)
+{
+	Timer update(true);
+
+	if (update.getTicks() > 1000){
+		Uint time = tfc.getCurrentTime() / 1000;
+		std::string buf("Current time: " + toString(time));
+		SetWindowText(hTime, buf.c_str());
+		update.restart();
+	}
 }
 
 // ================================================ //
@@ -133,6 +148,10 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			// Update listview title.
 			std::string buf("Launched Probes (Size: " + toString(probes.size()) + std::string(")"));
 			SetDlgItemText(hwnd, IDC_STATIC_LIST_PROBES_TITLE, buf.c_str());
+
+			// Create thread for updating time.
+			//std::thread t(&updateTime, GetDlgItem(hwnd, IDC_STATIC_TIME), tfc);
+			//t.detach();
 		}
 		return FALSE;
 
@@ -204,6 +223,14 @@ int main(int argc, char** argv)
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0){
 		return 1;
 	}
+
+	// Initialize visual styles for GUI.
+	INITCOMMONCONTROLSEX iccx;
+	ZeroMemory(&iccx, sizeof(iccx));
+	iccx.dwSize = sizeof(INITCOMMONCONTROLSEX);
+	iccx.dwICC = ICC_BAR_CLASSES | ICC_LISTVIEW_CLASSES | ICC_PROGRESS_CLASS |
+		ICC_STANDARD_CLASSES;
+	InitCommonControlsEx(&iccx);
 
 	int ret = DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_MAIN), NULL, MainProc);
 

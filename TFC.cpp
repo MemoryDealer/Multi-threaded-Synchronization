@@ -7,6 +7,7 @@
 // ================================================ //
 
 #include "TFC.hpp"
+#include "Timer.hpp"
 #include "resource.h"
 
 // ================================================ //
@@ -22,7 +23,8 @@ m_socket(INVALID_SOCKET),
 m_fleetAlive(true),
 m_inAsteroidField(false),
 m_shields(5),
-m_asteroidsDestroyed(0)
+m_asteroidsDestroyed(0),
+m_pTimer(new Timer())
 {
 	int ret = this->init();
 	printf("setupServer() = %d\n", ret);
@@ -117,15 +119,20 @@ void TFC::launchProbes(void)
 		int port = ntohs(probeInfo.sin_port);
 		IPAddress ip;
 		ip.set(std::string(host), port);
-		printf("New Probe: %s:%d\n", host, port);
+		
 
 		// Receive probe launch request.
 		int r = 0;
 		Probe::Message msg;
 		r = recv(probeSocket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
 		if (r > 0){
-			if (msg.type == Probe::MessageType::LAUNCH_REQUEST){
-				printf("Launch request received.\n");
+			switch (msg.type){
+			default:
+				// Discard any messages that are not launch requests in this state.
+				break;
+
+			case Probe::MessageType::LAUNCH_REQUEST:
+				printf("Launch request received from %s:%d.\n", host, port);
 
 				// Send a launch confirmation back to the probe, as well as the ID.
 				Probe::Message confirm;
@@ -141,10 +148,11 @@ void TFC::launchProbes(void)
 					probe.id = confirm.ConfirmLaunch.id;
 					probe.ip = ip;
 					probe.type = msg.LaunchRequest.type;
-					probe.state = 0;					
+					probe.state = 0;
 					m_probes.push_back(probe);
 				}
-			}			
+				break;
+			} // end switch(msg.type)
 		}
 
 		// Terminate connection.
@@ -165,6 +173,7 @@ void TFC::enterAsteroidField(void)
 int TFC::navigateAsteroidField(void)
 {
 	m_inAsteroidField = true;
+	m_pTimer->restart();
 
 	while (m_inAsteroidField == true){
 		// Accept incoming probe requests.
@@ -212,6 +221,17 @@ int TFC::navigateAsteroidField(void)
 				break;
 
 			case Probe::MessageType::DEFENSIVE_REQUEST:
+				{
+					Probe::Message response;
+					response.type = 33;
+					int s = send(probeSocket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
+					if (s > 0){
+						printf("Response sent to probe.\n");
+					}
+				}
+				break;
+
+			case Probe::MessageType::ASTEROID_FOUND:
 
 				break;
 			}

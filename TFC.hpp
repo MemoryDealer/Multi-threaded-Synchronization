@@ -14,6 +14,7 @@
 #include "Asteroid.hpp"
 #include "Probe.hpp"
 #include "Net.hpp"
+#include "Timer.hpp"
 
 // ================================================ //
 
@@ -54,6 +55,9 @@ public:
 	// Returns number of probes launched.
 	const int getNumProbes(void) const;
 
+	// Returns current time.
+	const Uint getCurrentTime(void) const;
+
 	// Setters
 
 	// --- //
@@ -67,6 +71,7 @@ private:
 	bool m_fleetAlive, m_inAsteroidField;
 	int m_shields;
 	int m_asteroidsDestroyed;
+	std::shared_ptr<Timer> m_pTimer;
 };
 
 // ================================================ //
@@ -75,6 +80,10 @@ private:
 
 inline const int TFC::getNumProbes(void) const{
 	return m_probes.size();
+}
+
+inline const Uint TFC::getCurrentTime(void) const{
+	return m_pTimer->getTicks();
 }
 
 // Setters
