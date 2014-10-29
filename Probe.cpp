@@ -16,9 +16,13 @@ m_id(0),
 m_type(type),
 m_state(Probe::State::ACTIVE),
 m_socket(INVALID_SOCKET),
-m_server(nullptr)
+m_server(nullptr),
+m_pTimer(nullptr)
 {
-
+	// Allocate timer for scout probe.
+	if (m_type == Probe::Type::SCOUT){
+		m_pTimer.reset(new Timer());
+	}
 }
 
 // ================================================ //
@@ -98,9 +102,14 @@ bool Probe::launch(void)
 		if (msg.type == MessageType::CONFIRM_LAUNCH){
 			// Launch confirmed, save ID assigned by TFC.
 			m_id = msg.ConfirmLaunch.id;
-			printf("Probe %d has received confirmation to launch.\n", m_id);
+			printf("Probe %d has received confirmation to launch.\n", m_id);			
 			std::thread t(&Probe::update, this);
 			t.detach();
+
+			// Start the timer for scout probe.
+			if (m_type == Probe::Type::SCOUT){
+				m_pTimer->restart();
+			}
 		}
 		else{
 			printf("Probe %d denied launch.\n", m_id);
@@ -149,16 +158,43 @@ void Probe::update(void)
 						}
 					}
 				}
-				closesocket(m_socket);
-
-				// Wait random length of time.
-				// ...
-				Sleep(500);
+				closesocket(m_socket);				
 
 				{
+					// Wait random length of time to discover asteroid according to Poisson
+					// distribution.
+					std::default_random_engine generator;
+					generator.seed(GetTickCount());
+					std::poisson_distribution<int> poissonDistribution(4.0);
+					int sleepTime = poissonDistribution(generator) * 1000;
+					printf("[][][][][][][]Scout probe waiting %d seconds...\n", sleepTime);
+					Sleep(sleepTime);
+
+					// Allocate data for newly discovered asteroid.
+					static Uint asteroidIDCtr = 0;
 					Asteroid asteroid;
-					asteroid.discoveryTime = 0;
-					asteroid.mass = 5;
+					asteroid.id = asteroidIDCtr++;
+					asteroid.discoveryTime = m_pTimer->getTicks() / 1000;
+
+					// Determine asteroid mass based on step function.
+					std::uniform_real_distribution<float> massDistribution(0.0, 1.0);
+					float step = massDistribution(generator);
+					if (step < 0.2){
+						asteroid.mass = 3;
+					}
+					else if (step < 0.5){
+						asteroid.mass = 6;
+					}
+					else if (step < 0.7){
+						asteroid.mass = 9;
+					}
+					else{
+						asteroid.mass = 11;
+					}
+
+					// Determine time to impact based on uniform distribution.
+					std::uniform_int_distribution<int> impactDistribution(0, 15);
+					asteroid.timeToImpact = impactDistribution(generator);
 
 					m_socket = socket(m_server->ai_family, m_server->ai_socktype, m_server->ai_protocol);
 					if (connect(m_socket, m_server->ai_addr,

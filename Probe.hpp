@@ -14,6 +14,8 @@
 #include "stdafx.hpp"
 #include "Asteroid.hpp"
 
+class Timer;
+
 // ================================================ //
 
 class Probe
@@ -86,6 +88,7 @@ private:
 	Uint m_state;
 	SOCKET m_socket;
 	struct addrinfo* m_server;	
+	std::shared_ptr<Timer> m_pTimer;
 };
 
 // ================================================ //

@@ -27,11 +27,14 @@ AsteroidContainer::~AsteroidContainer(void)
 
 // ================================================ //
 
-void AsteroidContainer::insert(const Asteroid& asteroid)
+bool AsteroidContainer::insert(const Asteroid& asteroid)
 {
 	if (top < MAX - 1){
 		m_data[++top] = asteroid;
+		return true;
 	}
+
+	return false;
 }
 
 // ================================================ //

@@ -52,7 +52,7 @@ static void AddProbeToList(HWND hList, const Uint id,
 
 // ================================================ //
 
-static void updateTime(const HWND hTime, const TFC& tfc)
+static void UpdateTime(const HWND hTime, const TFC& tfc)
 {
 	Timer update(true);
 
@@ -231,6 +231,8 @@ int main(int argc, char** argv)
 	iccx.dwICC = ICC_BAR_CLASSES | ICC_LISTVIEW_CLASSES | ICC_PROGRESS_CLASS |
 		ICC_STANDARD_CLASSES;
 	InitCommonControlsEx(&iccx);
+
+	srand(GetTickCount());
 
 	int ret = DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_MAIN), NULL, MainProc);
 

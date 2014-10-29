@@ -21,6 +21,7 @@ struct Asteroid{
 	Uint id;
 	Uint mass;
 	Uint discoveryTime;
+	Uint timeToImpact;
 };
 
 // ================================================ //
@@ -31,8 +32,8 @@ public:
 	explicit AsteroidContainer(void);
 	~AsteroidContainer(void);
 
-	// Pushes an object into the stack.
-	void insert(const Asteroid& asteroid);
+	// Pushes an object into the stack. Returns false if stack is full.
+	bool insert(const Asteroid& asteroid);
 
 	// Pops the top item off the stack.
 	const Asteroid remove(void);

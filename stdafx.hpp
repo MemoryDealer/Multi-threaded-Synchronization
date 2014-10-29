@@ -31,6 +31,7 @@ typedef unsigned int Uint;
 #include <sstream>
 #include <vector>
 #include <list>
+#include <random>
 #include <cstdio>
 
 // Windows

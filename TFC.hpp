@@ -40,15 +40,11 @@ public:
 	// Returns zero on success, otherwise the error code is returned.
 	int init(void);
 
-	// Accept incoming probe connections and register them.
-	void launchProbes(void);
-	
-	// Creates a thread for navigating the asteroid field and returns. This
-	// must return so the GUI can be updated.
+	// Sets the local flag m_inAsteroidField to true.
 	void enterAsteroidField(void);
 
 	// Accept requests from probes and process them.
-	int navigateAsteroidField(void);
+	void update(void);
 
 	// Getters
 
@@ -75,6 +71,10 @@ private:
 };
 
 // ================================================ //
+
+inline void TFC::enterAsteroidField(void){
+	m_inAsteroidField = true;
+}
 
 // Getters
 
