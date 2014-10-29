@@ -196,6 +196,7 @@ void Probe::update(void)
 					std::uniform_int_distribution<int> impactDistribution(0, 15);
 					asteroid.timeToImpact = impactDistribution(generator);
 
+					// Send the asteroid data to TFC.
 					m_socket = socket(m_server->ai_family, m_server->ai_socktype, m_server->ai_protocol);
 					if (connect(m_socket, m_server->ai_addr,
 						static_cast<int>(m_server->ai_addrlen)) != SOCKET_ERROR){

@@ -24,7 +24,8 @@ m_fleetAlive(true),
 m_inAsteroidField(false),
 m_shields(5),
 m_asteroidsDestroyed(0),
-m_pTimer(new Timer())
+m_pTimer(new Timer()),
+m_guiEvents()
 {
 	int ret = this->init();
 	printf("setupServer() = %d\n", ret);

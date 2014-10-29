@@ -25,6 +25,18 @@ struct ProbeRecord{
 	Uint state;
 };
 
+struct GUIEvent{
+	Uint type;
+	std::string str;
+};
+
+enum GUIEventType{
+	NONE = 0,
+	NEW_UPDATE,
+	NEW_ASTEROID,
+	SHIELDS_HIT
+};
+
 // ================================================ //
 
 class TFC
@@ -54,6 +66,9 @@ public:
 	// Returns current time.
 	const Uint getCurrentTime(void) const;
 
+	// Returns next GUIEvent in queue or nullptr if empty.
+	const GUIEvent getNextGUIEvent(void);
+
 	// Setters
 
 	// --- //
@@ -68,6 +83,7 @@ private:
 	int m_shields;
 	int m_asteroidsDestroyed;
 	std::shared_ptr<Timer> m_pTimer;
+	std::queue<GUIEvent> m_guiEvents;
 };
 
 // ================================================ //
@@ -84,6 +100,17 @@ inline const int TFC::getNumProbes(void) const{
 
 inline const Uint TFC::getCurrentTime(void) const{
 	return m_pTimer->getTicks();
+}
+
+inline const GUIEvent TFC::getNextGUIEvent(void){
+	if (m_guiEvents.size() == 0){
+		GUIEvent next;
+		next.type = GUIEventType::NONE;
+	}
+	else{
+		GUIEvent next = m_guiEvents.front();
+		m_guiEvents.pop();
+	}
 }
 
 // Setters
