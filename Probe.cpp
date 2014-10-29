@@ -166,8 +166,7 @@ void Probe::update(void)
 					std::default_random_engine generator;
 					generator.seed(GetTickCount());
 					std::poisson_distribution<int> poissonDistribution(4.0);
-					int sleepTime = poissonDistribution(generator) * 1000;
-					printf("[][][][][][][]Scout probe waiting %d seconds...\n", sleepTime);
+					int sleepTime = poissonDistribution(generator) * 1000;					
 					Sleep(sleepTime);
 
 					// Allocate data for newly discovered asteroid.
@@ -205,7 +204,7 @@ void Probe::update(void)
 						msg.asteroid = asteroid;
 						int s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
 						if (s > 0){
-							printf("Asteroid info sent.\n");
+							
 						}
 					}
 				}
@@ -226,8 +225,12 @@ void Probe::update(void)
 						ZeroMemory(&msg, sizeof(msg));
 						int r = recv(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
 						if (r > 0){
-							printf("Defensive probe received: %d\n", msg.type);
+							if (msg.type == Probe::MessageType::TARGET_AVAILABLE){
+								printf("Probe destroying asteroid ID %d\n", msg.asteroid.id);
+							}
 						}
+
+						// Delay...
 					}
 				}
 				Sleep(500);

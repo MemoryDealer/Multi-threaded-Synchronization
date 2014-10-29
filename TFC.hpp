@@ -27,13 +27,18 @@ struct ProbeRecord{
 
 struct GUIEvent{
 	Uint type;
-	std::string str;
+	union{
+		Asteroid asteroid;
+		char buffer[255];
+		int x;
+	};
 };
 
 enum GUIEventType{
 	NONE = 0,
-	NEW_UPDATE,
+	UPDATE,
 	NEW_ASTEROID,
+	ASTEROID_REMOVED,
 	SHIELDS_HIT
 };
 
@@ -69,6 +74,9 @@ public:
 	// Returns next GUIEvent in queue or nullptr if empty.
 	const GUIEvent getNextGUIEvent(void);
 
+	// Returns shield level.
+	const Uint getShields(void) const;
+
 	// Setters
 
 	// --- //
@@ -80,7 +88,7 @@ private:
 	std::vector<ProbeRecord> m_probes;
 	SOCKET m_socket;
 	bool m_fleetAlive, m_inAsteroidField;
-	int m_shields;
+	Uint m_shields;
 	int m_asteroidsDestroyed;
 	std::shared_ptr<Timer> m_pTimer;
 	std::queue<GUIEvent> m_guiEvents;
@@ -103,14 +111,21 @@ inline const Uint TFC::getCurrentTime(void) const{
 }
 
 inline const GUIEvent TFC::getNextGUIEvent(void){
+	GUIEvent next;
+	ZeroMemory(&next, sizeof(next));
 	if (m_guiEvents.size() == 0){
-		GUIEvent next;
 		next.type = GUIEventType::NONE;
 	}
 	else{
-		GUIEvent next = m_guiEvents.front();
+		next = m_guiEvents.front();
 		m_guiEvents.pop();
 	}
+
+	return next;
+}
+
+inline const Uint TFC::getShields(void) const{
+	return m_shields;
 }
 
 // Setters

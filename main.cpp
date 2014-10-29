@@ -9,6 +9,7 @@
 #include "TFC.hpp"
 #include "Probe.hpp"
 #include "Timer.hpp"
+#include "GUI.hpp"
 #include "resource.h"
 
 // ================================================ //
@@ -16,51 +17,94 @@
 static void AddProbeToList(HWND hList, const Uint id, 
 						   const Uint type, const unsigned state)
 {	
-	static int iItem = 0;
-	char buf[255];
-	LVITEM li = { 0 };	
-	li.mask = LVIF_TEXT;
-	li.iItem = iItem++;
-	li.cchTextMax = sizeof(buf);
+	static Uint index = 0;
+	std::string str;
 
-	li.iSubItem = 0;
-	wsprintf(buf, "%d", id);
-	li.pszText = buf;
-	SendMessage(hList, LVM_INSERTITEM, 0, reinterpret_cast<LPARAM>(&li));
+	InsertListviewItem(hList, index, toString(id));
 
-	li.iSubItem = 1;
 	switch (type){
 	default:
 	case Probe::Type::SCOUT:
-		strcpy_s(buf, "Scout");
+		str = "Scout";
 		break;
 
 	case Probe::Type::PHOTON:
-		strcpy_s(buf, "Photon Defense");
+		str = "Photon Defense";
 		break;
 
 	case Probe::Type::PHASER:
-		strcpy_s(buf, "Phaser Defense");
+		str = "Phaser Defense";
 		break;
 	}
-	SendMessage(hList, LVM_SETITEM, 0, reinterpret_cast<LPARAM>(&li));
 
-	li.iSubItem = 2;
-	strcpy_s(buf, "state");
-	SendMessage(hList, LVM_SETITEM, 0, reinterpret_cast<LPARAM>(&li));
+	SetListviewItem(hList, index, 1, str);
+
+	str = "temp";
+	SetListviewItem(hList, index, 2, str);
+
+	++index;
 }
 
 // ================================================ //
 
-static void UpdateTime(const HWND hTime, const TFC& tfc)
+static void UpdateGUI(HWND hwnd, TFC* tfc)
 {
 	Timer update(true);
 
-	if (update.getTicks() > 1000){
-		Uint time = tfc.getCurrentTime() / 1000;
-		std::string buf("Current time: " + toString(time));
-		SetWindowText(hTime, buf.c_str());
-		update.restart();
+	while (hwnd != nullptr){
+		// Check for GUI events from TFC.
+		UpdateWindow(hwnd);
+
+		GUIEvent e = tfc->getNextGUIEvent();
+		switch (e.type){
+		default:
+		case GUIEventType::NONE:
+			break;
+
+		case GUIEventType::UPDATE:
+			SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
+							   reinterpret_cast<LPARAM>(&e.buffer));
+			break;
+
+		case GUIEventType::NEW_ASTEROID:
+			printf("NEW ASTEROID!: %d\t%d\n", e.asteroid.mass, e.asteroid.timeToImpact);
+			{
+				static Uint index = 0;
+				// Insert asteroid data into listview.
+				HWND hList = GetDlgItem(hwnd, IDC_LIST_ASTEROIDS);
+				InsertListviewItem(hList, index, toString(e.asteroid.id));
+				SetListviewItem(hList, index, 1, toString(e.asteroid.mass));
+				++index;
+
+				// Update number of asteroids in stack.
+				int num = static_cast<int>(SendMessage(hList, LVM_GETITEMCOUNT, 0, 0));
+				std::string buffer = "Asteroid Stack (Size: " + toString(num) + ")";
+				SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, buffer.c_str());
+
+				// Update the TFC log.
+				SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
+								   reinterpret_cast<LPARAM>("New asteroid discovered!"));
+			}			
+			break;
+
+		case GUIEventType::ASTEROID_REMOVED:
+			//SendDlgItemMessage(hwnd, IDC_LIST_ASTEROIDS, LVM_DELETEITEM, 
+			//				   static_cast<WPARAM>(SendDlgItemMessage(hwnd, IDC_LIST_ASTEROIDS, LVM_GETITEMCOUNT, 0, 0)), 0);
+			break;
+
+		case GUIEventType::SHIELDS_HIT:
+			SendDlgItemMessage(hwnd, IDC_PROGRESS_SHIELDS, PBM_SETPOS, 
+							   static_cast<WPARAM>(tfc->getShields()), 0);
+			break;
+		}
+
+		// Update elapsed time.
+		if (update.getTicks() > 1000){
+			Uint time = tfc->getCurrentTime() / 1000;
+			std::string buf("Current time: " + toString(time));
+			SetDlgItemText(hwnd, IDC_STATIC_TIME, buf.c_str());
+			update.restart();
+		}
 	}
 }
 
@@ -153,8 +197,8 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			SetDlgItemText(hwnd, IDC_STATIC_LIST_PROBES_TITLE, buf.c_str());
 
 			// Create thread for updating time.
-			//std::thread t(&updateTime, GetDlgItem(hwnd, IDC_STATIC_TIME), tfc);
-			//t.detach();
+			std::thread t(&UpdateGUI, hwnd, &tfc);
+			t.detach();
 		}
 		return FALSE;
 

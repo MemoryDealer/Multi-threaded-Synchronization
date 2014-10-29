@@ -160,7 +160,7 @@ void TFC::update(void)
 					response.type = 0;
 					int s = send(probeSocket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
 					if (s > 0){
-						printf("SCOUT_REQUEST acked\n");
+						
 					}
 				}
 					break;
@@ -168,20 +168,44 @@ void TFC::update(void)
 				case Probe::MessageType::DEFENSIVE_REQUEST:
 				{
 					Probe::Message response;
+					if (m_asteroids.empty()){
+						response.type = Probe::MessageType::NO_TARGET;
+					}
+					else{
+						response.type = Probe::MessageType::TARGET_AVAILABLE;
+						response.asteroid = m_asteroids.remove();
+
+						// Trigger GUI event to remove asteroid from listview.
+						GUIEvent e;
+						e.type = GUIEventType::ASTEROID_REMOVED;
+						e.x = response.asteroid.id;
+						m_guiEvents.push(e);
+					}
+
 					// Test
-					response.type = 33;
 					int s = send(probeSocket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
 					if (s > 0){
-						printf("Response sent to probe.\n");
+						
 					}
 				}
 					break;
 
 				case Probe::MessageType::ASTEROID_FOUND:
 
-					m_asteroids.insert(msg.asteroid);
-					printf("New asteroid: %d\t%d\n", msg.asteroid.mass, msg.asteroid.timeToImpact);
-					// Inform main GUI...
+					if (m_asteroids.insert(msg.asteroid))					
+					{
+						// Inform main GUI of new asteroid.
+						GUIEvent e;
+						e.type = GUIEventType::NEW_ASTEROID;
+						e.asteroid = msg.asteroid;
+						m_guiEvents.push(e);
+					}
+					else{
+						--m_shields;
+						GUIEvent e;
+						e.type = GUIEventType::SHIELDS_HIT;
+						m_guiEvents.push(e);
+					}
 					break;
 				}
 			}
