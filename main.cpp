@@ -75,6 +75,9 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	static std::vector<std::shared_ptr<Probe>> probes;
 	HBRUSH hBackground = reinterpret_cast<HBRUSH>(COLOR_BTNFACE + 1);
 
+	// Get next GUIEvent from TFC...
+	// perhaps use a thread to check and then force GUI update
+
 	switch (msg){
 	default:
 		return FALSE;
