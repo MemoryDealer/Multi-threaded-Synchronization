@@ -196,7 +196,7 @@ void TFC::update(void)
 					{
 						// Inform main GUI of new asteroid.
 						GUIEvent e;
-						e.type = GUIEventType::NEW_ASTEROID;
+						e.type = GUIEventType::ASTEROID_FOUND;
 						e.asteroid = msg.asteroid;
 						m_guiEvents.push(e);
 					}

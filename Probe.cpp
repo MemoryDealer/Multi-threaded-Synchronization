@@ -233,7 +233,7 @@ void Probe::update(void)
 						// Delay...
 					}
 				}
-				Sleep(500);
+				Sleep(10000);
 				closesocket(m_socket);
 				break;
 			}

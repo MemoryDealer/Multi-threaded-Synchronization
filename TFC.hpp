@@ -37,7 +37,7 @@ struct GUIEvent{
 enum GUIEventType{
 	NONE = 0,
 	UPDATE,
-	NEW_ASTEROID,
+	ASTEROID_FOUND,
 	ASTEROID_REMOVED,
 	SHIELDS_HIT
 };
@@ -73,6 +73,8 @@ public:
 
 	// Returns next GUIEvent in queue or nullptr if empty.
 	const GUIEvent getNextGUIEvent(void);
+
+	const bool hasGUIEvent(void) const;
 
 	// Returns shield level.
 	const Uint getShields(void) const;
@@ -122,6 +124,10 @@ inline const GUIEvent TFC::getNextGUIEvent(void){
 	}
 
 	return next;
+}
+
+inline const bool TFC::hasGUIEvent(void) const{
+	return (m_guiEvents.size() > 0);
 }
 
 inline const Uint TFC::getShields(void) const{

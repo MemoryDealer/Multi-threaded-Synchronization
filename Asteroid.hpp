@@ -47,7 +47,7 @@ public:
 	// --- //
 
 	// Maximum number of items in container.
-	static const int MAX = 15;
+	static const int MAX = 5;
 
 private:
 	// Array-based stack.

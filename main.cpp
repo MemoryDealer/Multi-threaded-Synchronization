@@ -50,52 +50,76 @@ static void AddProbeToList(HWND hList, const Uint id,
 static void UpdateGUI(HWND hwnd, TFC* tfc)
 {
 	Timer update(true);
+	Uint asteroidIndex = 0;
 
-	while (hwnd != nullptr){
-		// Check for GUI events from TFC.
+	while (hwnd != nullptr){		
 		UpdateWindow(hwnd);
 
-		GUIEvent e = tfc->getNextGUIEvent();
-		switch (e.type){
-		default:
-		case GUIEventType::NONE:
-			break;
+		// Check for GUI events from TFC.
+		if (tfc->hasGUIEvent()){
+			GUIEvent e = tfc->getNextGUIEvent();
+			switch (e.type){
+			default:
+			case GUIEventType::NONE:
+				break;
 
-		case GUIEventType::UPDATE:
-			SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
-							   reinterpret_cast<LPARAM>(&e.buffer));
-			break;
+			case GUIEventType::UPDATE:
+				SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
+								   reinterpret_cast<LPARAM>(&e.buffer));
+				break;
 
-		case GUIEventType::NEW_ASTEROID:
-			printf("NEW ASTEROID!: %d\t%d\n", e.asteroid.mass, e.asteroid.timeToImpact);
+			case GUIEventType::ASTEROID_FOUND:
 			{
-				static Uint index = 0;
 				// Insert asteroid data into listview.
 				HWND hList = GetDlgItem(hwnd, IDC_LIST_ASTEROIDS);
-				InsertListviewItem(hList, index, toString(e.asteroid.id));
-				SetListviewItem(hList, index, 1, toString(e.asteroid.mass));
-				++index;
+				InsertListviewItem(hList, asteroidIndex, toString(e.asteroid.id));
+				SetListviewItem(hList, asteroidIndex, 1, toString(e.asteroid.mass));
+				++asteroidIndex;
 
 				// Update number of asteroids in stack.
-				int num = static_cast<int>(SendMessage(hList, LVM_GETITEMCOUNT, 0, 0));
-				std::string buffer = "Asteroid Stack (Size: " + toString(num) + ")";
+				std::string buffer = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
 				SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, buffer.c_str());
 
 				// Update the TFC log.
 				SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
-								   reinterpret_cast<LPARAM>("New asteroid discovered!"));
-			}			
-			break;
+								reinterpret_cast<LPARAM>("New asteroid discovered!"));
+			}
+				break;
 
-		case GUIEventType::ASTEROID_REMOVED:
-			//SendDlgItemMessage(hwnd, IDC_LIST_ASTEROIDS, LVM_DELETEITEM, 
-			//				   static_cast<WPARAM>(SendDlgItemMessage(hwnd, IDC_LIST_ASTEROIDS, LVM_GETITEMCOUNT, 0, 0)), 0);
-			break;
+			case GUIEventType::ASTEROID_REMOVED:
+				--asteroidIndex;
+				{
+					// Update number of asteroids in stack.
+					std::string title = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
+					SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, title.c_str());
 
-		case GUIEventType::SHIELDS_HIT:
-			SendDlgItemMessage(hwnd, IDC_PROGRESS_SHIELDS, PBM_SETPOS, 
-							   static_cast<WPARAM>(tfc->getShields()), 0);
-			break;
+					// Find listview item for removed asteroid and delete it.
+					HWND hList = GetDlgItem(hwnd, IDC_LIST_ASTEROIDS);
+					int index = 0, max = SendMessage(hList, LVM_GETITEMCOUNT, 0, 0);
+					char buffer[255] = { 0 };
+					LVITEM li = { 0 };
+					li.mask = LVIF_TEXT;
+					li.iSubItem = 0;
+					li.pszText = buffer;
+					li.cchTextMax = sizeof(buffer);
+					for (; index < max; ++index){
+						li.iItem = index;
+						if (SendMessage(hList, LVM_GETITEM, 0, reinterpret_cast<LPARAM>(&li))){
+							Uint id = std::stoi(li.pszText);
+							if (id == e.x){
+								SendMessage(hList, LVM_DELETEITEM, index, 0);
+								index = max;
+							}
+						}
+					}
+				}
+				break;
+
+			case GUIEventType::SHIELDS_HIT:
+				SendDlgItemMessage(hwnd, IDC_PROGRESS_SHIELDS, PBM_SETPOS,
+								   static_cast<WPARAM>(tfc->getShields()), 0);
+				break;
+			}
 		}
 
 		// Update elapsed time.
