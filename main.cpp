@@ -55,6 +55,9 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 	while (hwnd != nullptr){		
 		UpdateWindow(hwnd);
 
+		ListView_EnsureVisible(GetDlgItem(hwnd, IDC_LIST_TFC_UPDATES), SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LVM_GETITEMCOUNT, 0, 0),
+							   FALSE);
+
 		// Check for GUI events from TFC.
 		if (tfc->hasGUIEvent()){
 			GUIEvent e = tfc->getNextGUIEvent();
@@ -69,21 +72,21 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 				break;
 
 			case GUIEventType::ASTEROID_FOUND:
-			{
-				// Insert asteroid data into listview.
-				HWND hList = GetDlgItem(hwnd, IDC_LIST_ASTEROIDS);
-				InsertListviewItem(hList, asteroidIndex, toString(e.asteroid.id));
-				SetListviewItem(hList, asteroidIndex, 1, toString(e.asteroid.mass));
-				++asteroidIndex;
+				{
+					// Insert asteroid data into listview.
+					HWND hList = GetDlgItem(hwnd, IDC_LIST_ASTEROIDS);
+					InsertListviewItem(hList, asteroidIndex, toString(e.asteroid.id));
+					SetListviewItem(hList, asteroidIndex, 1, toString(e.asteroid.mass));
+					++asteroidIndex;
 
-				// Update number of asteroids in stack.
-				std::string buffer = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
-				SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, buffer.c_str());
+					// Update number of asteroids in stack.
+					std::string buffer = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
+					SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, buffer.c_str());
 
-				// Update the TFC log.
-				SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
-								reinterpret_cast<LPARAM>("New asteroid discovered!"));
-			}
+					// Update the TFC log.
+					SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
+									reinterpret_cast<LPARAM>("New asteroid discovered!"));
+				}
 				break;
 
 			case GUIEventType::ASTEROID_REMOVED:
