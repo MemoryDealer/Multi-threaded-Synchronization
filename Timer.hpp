@@ -54,10 +54,10 @@ public:
 	void setStartTicks(const int ticks);
 
 private:
-	Uint	m_startTicks;
-	Uint	m_pausedTicks;
-	bool	m_paused;
-	bool	m_started;
+	Uint m_startTicks;
+	Uint m_pausedTicks;
+	bool m_paused;
+	bool m_started;
 };
 
 // ================================================ //

@@ -55,8 +55,24 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 	while (hwnd != nullptr){		
 		UpdateWindow(hwnd);
 
-		ListView_EnsureVisible(GetDlgItem(hwnd, IDC_LIST_TFC_UPDATES), SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LVM_GETITEMCOUNT, 0, 0),
-							   FALSE);
+		// Update asteroids awaiting destruction.
+		std::string buffer = "Asteroids Awaiting Destruction: " + 
+			toString(55 - tfc->getNumAsteroidsDestroyed());
+		SetDlgItemText(hwnd, IDC_STATIC_NUMASTEROIDS, buffer.c_str());
+
+		// Update asteroids destroyed.
+		buffer = "Asteroids Successfully Destroyed: " +
+			toString(tfc->getNumAsteroidsDestroyed());
+		SetDlgItemText(hwnd, IDC_STATIC_ASTEROIDS_DESTROYED, buffer.c_str());
+
+		// Update number of asteroids in stack.
+		buffer = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
+		SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, buffer.c_str());
+
+		// Update number of probes.
+		buffer = "Launched Probes (Size: " +
+			toString(tfc->getNumProbes()) + ")";
+		SetDlgItemText(hwnd, IDC_STATIC_LIST_PROBES_TITLE, buffer.c_str());
 
 		// Check for GUI events from TFC.
 		if (tfc->hasGUIEvent()){
@@ -79,10 +95,6 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 					SetListviewItem(hList, asteroidIndex, 1, toString(e.asteroid.mass));
 					++asteroidIndex;
 
-					// Update number of asteroids in stack.
-					std::string buffer = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
-					SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, buffer.c_str());
-
 					// Update the TFC log.
 					SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
 									reinterpret_cast<LPARAM>("New asteroid discovered!"));
@@ -92,28 +104,12 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 			case GUIEventType::ASTEROID_REMOVED:
 				--asteroidIndex;
 				{
-					// Update number of asteroids in stack.
-					std::string title = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
-					SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, title.c_str());
-
 					// Find listview item for removed asteroid and delete it.
 					HWND hList = GetDlgItem(hwnd, IDC_LIST_ASTEROIDS);
-					int index = 0, max = SendMessage(hList, LVM_GETITEMCOUNT, 0, 0);
-					char buffer[255] = { 0 };
-					LVITEM li = { 0 };
-					li.mask = LVIF_TEXT;
-					li.iSubItem = 0;
-					li.pszText = buffer;
-					li.cchTextMax = sizeof(buffer);
-					for (; index < max; ++index){
-						li.iItem = index;
-						if (SendMessage(hList, LVM_GETITEM, 0, reinterpret_cast<LPARAM>(&li))){
-							Uint id = std::stoi(li.pszText);
-							if (id == e.x){
-								SendMessage(hList, LVM_DELETEITEM, index, 0);
-								index = max;
-							}
-						}
+					// Find index of listview item with asteroid (e.x holds ID).
+					int index = GetListviewItemIndex(hList, 0, toString(e.x));
+					if (index != -1){
+						SendMessage(hList, LVM_DELETEITEM, static_cast<WPARAM>(index), 0);
 					}
 				}
 				break;
@@ -121,6 +117,18 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 			case GUIEventType::SHIELDS_HIT:
 				SendDlgItemMessage(hwnd, IDC_PROGRESS_SHIELDS, PBM_SETPOS,
 								   static_cast<WPARAM>(tfc->getShields()), 0);
+				break;
+
+			case GUIEventType::PROBE_TERMINATED:
+				SendDlgItemMessage(hwnd, IDC_PROGRESS_SHIELDS, PBM_SETPOS,
+								   static_cast<WPARAM>(tfc->getShields()), 0);
+				{
+					HWND hList = GetDlgItem(hwnd, IDC_LIST_PROBES);
+					int index = GetListviewItemIndex(hList, 0, toString(e.x));
+					if (index != -1){
+						SendMessage(hList, LVM_DELETEITEM, static_cast<WPARAM>(index), 0);
+					}
+				}
 				break;
 			}
 		}

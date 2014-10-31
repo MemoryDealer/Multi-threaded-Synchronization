@@ -16,12 +16,17 @@
 // ================================================ //
 
 // Inserts a new item into listview.
-int InsertListviewItem(const HWND hList, const int index, 
+const int InsertListviewItem(const HWND hList, const int index, 
 					   const std::string& text);
 
 // Sets a subitem of a listview item.
-BOOL SetListviewItem(const HWND hList, const int index, const int subitem,
+const BOOL SetListviewItem(const HWND hList, const int index, const int subitem,
 					 const std::string& text);
+
+// Returns the index of the item containing the specified text at the 
+// specified sub item. Returns -1 if not found.
+const int GetListviewItemIndex(const HWND hList, const int subitem, 
+							   const std::string& text);
 
 // ================================================ //
 

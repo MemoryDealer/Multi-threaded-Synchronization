@@ -39,7 +39,8 @@ enum GUIEventType{
 	UPDATE,
 	ASTEROID_FOUND,
 	ASTEROID_REMOVED,
-	SHIELDS_HIT
+	SHIELDS_HIT,
+	PROBE_TERMINATED
 };
 
 // ================================================ //
@@ -74,10 +75,14 @@ public:
 	// Returns next GUIEvent in queue or nullptr if empty.
 	const GUIEvent getNextGUIEvent(void);
 
+	// Returns true if there are GUI events in the queue.
 	const bool hasGUIEvent(void) const;
 
 	// Returns shield level.
 	const Uint getShields(void) const;
+
+	// Returns number of asteroids destroyed.
+	const Uint getNumAsteroidsDestroyed(void) const;
 
 	// Setters
 
@@ -91,8 +96,8 @@ private:
 	SOCKET m_socket;
 	bool m_fleetAlive, m_inAsteroidField;
 	Uint m_shields;
-	int m_asteroidsDestroyed;
-	std::shared_ptr<Timer> m_pTimer;
+	Uint m_asteroidsDestroyed;
+	std::shared_ptr<Timer> m_pClock;
 	std::queue<GUIEvent> m_guiEvents;
 };
 
@@ -109,7 +114,7 @@ inline const int TFC::getNumProbes(void) const{
 }
 
 inline const Uint TFC::getCurrentTime(void) const{
-	return m_pTimer->getTicks();
+	return m_pClock->getTicks();
 }
 
 inline const GUIEvent TFC::getNextGUIEvent(void){
@@ -132,6 +137,10 @@ inline const bool TFC::hasGUIEvent(void) const{
 
 inline const Uint TFC::getShields(void) const{
 	return m_shields;
+}
+
+inline const Uint TFC::getNumAsteroidsDestroyed(void) const{
+	return m_asteroidsDestroyed;
 }
 
 // Setters

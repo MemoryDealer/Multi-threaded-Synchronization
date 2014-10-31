@@ -36,6 +36,9 @@ public:
 	// Prints an error message with Probe ID.
 	void reportError(const char* msg);
 
+	// Returns time required in milliseconds to destroy Asteroid a.
+	const Uint timeRequired(const Asteroid& a);
+
 	// Getters
 
 	// Returns Probe ID in string format.
@@ -63,22 +66,22 @@ public:
 		DEFENSIVE_REQUEST,
 		ASTEROID_FOUND,
 		TARGET_AVAILABLE,
-		NO_TARGET
+		NO_TARGET,
+		TARGET_DESTROYED,
+		TERMINATED
 	};
 
 	// A network message.
 	struct Message{
 		int type;
+		Uint time;
 		// Use a union to minimize data sent over sockets.
 		union{
 			struct{
 				Uint type;
 			} LaunchRequest;
 
-			struct{
-				Uint id;
-
-			} ConfirmLaunch;
+			Uint id;
 
 			Asteroid asteroid;
 		};
@@ -90,7 +93,9 @@ private:
 	Uint m_state;
 	SOCKET m_socket;
 	struct addrinfo* m_server;	
-	std::shared_ptr<Timer> m_pTimer;
+	std::shared_ptr<Timer> m_pClock;
+	int m_weaponRechargeTime;
+	int m_weaponPower;
 };
 
 // ================================================ //

@@ -24,7 +24,7 @@ m_fleetAlive(true),
 m_inAsteroidField(false),
 m_shields(5),
 m_asteroidsDestroyed(0),
-m_pTimer(new Timer()),
+m_pClock(new Timer()),
 m_guiEvents()
 {
 	int ret = this->init();
@@ -96,7 +96,7 @@ int TFC::init(void)
 
 void TFC::update(void)
 {
-	m_pTimer->restart();
+	m_pClock->restart();
 
 	while (m_fleetAlive == true){
 		// Accept incoming probe requests.
@@ -127,7 +127,7 @@ void TFC::update(void)
 					static Uint probeIDCtr = 0;
 					Probe::Message confirm;
 					confirm.type = Probe::MessageType::CONFIRM_LAUNCH;
-					confirm.ConfirmLaunch.id = probeIDCtr++;
+					confirm.id = probeIDCtr++;
 
 					int s = send(probeSocket, reinterpret_cast<const char*>(&confirm), sizeof(confirm), 0);
 					if (s > 0){
@@ -135,7 +135,7 @@ void TFC::update(void)
 
 						// Add probe to TFC list of probes.
 						ProbeRecord probe;
-						probe.id = confirm.ConfirmLaunch.id;
+						probe.id = confirm.id;
 						probe.ip = ip;
 						probe.type = msg.LaunchRequest.type;
 						probe.state = 0;
@@ -154,45 +154,21 @@ void TFC::update(void)
 					break;
 
 				case Probe::MessageType::SCOUT_REQUEST:
-				{
-					Probe::Message response;
-					// Ack request.
-					response.type = 0;
-					int s = send(probeSocket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
-					if (s > 0){
+					{
+						Probe::Message response;
+						// Ack request.
+						response.type = Probe::MessageType::SCOUT_REQUEST;
+						response.time = m_pClock->getTicks();						
+						int s = send(probeSocket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
+						if (s > 0){
 						
+						}
 					}
-				}
-					break;
-
-				case Probe::MessageType::DEFENSIVE_REQUEST:
-				{
-					Probe::Message response;
-					if (m_asteroids.empty()){
-						response.type = Probe::MessageType::NO_TARGET;
-					}
-					else{
-						response.type = Probe::MessageType::TARGET_AVAILABLE;
-						response.asteroid = m_asteroids.remove();
-
-						// Trigger GUI event to remove asteroid from listview.
-						GUIEvent e;
-						e.type = GUIEventType::ASTEROID_REMOVED;
-						e.x = response.asteroid.id;
-						m_guiEvents.push(e);
-					}
-
-					// Test
-					int s = send(probeSocket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
-					if (s > 0){
-						
-					}
-				}
 					break;
 
 				case Probe::MessageType::ASTEROID_FOUND:
 
-					if (m_asteroids.insert(msg.asteroid))					
+					if (m_asteroids.insert(msg.asteroid))
 					{
 						// Inform main GUI of new asteroid.
 						GUIEvent e;
@@ -204,6 +180,60 @@ void TFC::update(void)
 						--m_shields;
 						GUIEvent e;
 						e.type = GUIEventType::SHIELDS_HIT;
+						m_guiEvents.push(e);
+					}
+					break;
+
+				case Probe::MessageType::DEFENSIVE_REQUEST:
+					{
+						Probe::Message response;
+						if (m_asteroids.empty()){
+							response.type = Probe::MessageType::NO_TARGET;
+						}
+						else{
+							response.type = Probe::MessageType::TARGET_AVAILABLE;
+							response.time = m_pClock->getTicks();
+							response.asteroid = m_asteroids.remove();
+
+							// Trigger GUI event to remove asteroid from listview.
+							GUIEvent e;
+							e.type = GUIEventType::ASTEROID_REMOVED;
+							e.x = response.asteroid.id;
+							m_guiEvents.push(e);
+						}
+
+						// Send the requested data to the probe.
+						int s = send(probeSocket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
+						if (s > 0){
+						
+						}
+					}
+					break;
+
+				case Probe::MessageType::TARGET_DESTROYED:
+					printf("TARGET DESTROYED!\n");
+					++m_asteroidsDestroyed;
+					break;
+
+				case Probe::MessageType::TERMINATED:
+					{
+						// Probe destroyed, remove from probe list.		
+						for (std::vector<ProbeRecord>::iterator itr = m_probes.begin();
+							 itr != m_probes.end();){
+							if (itr->id == msg.id){
+								itr = m_probes.erase(itr);
+								break;
+							}
+							else{
+								itr++;
+							}
+						}
+
+						// Trigger GUI event to remove probe.
+						--m_shields;
+						GUIEvent e;
+						e.type = GUIEventType::PROBE_TERMINATED;
+						e.x = msg.id;
 						m_guiEvents.push(e);
 					}
 					break;
