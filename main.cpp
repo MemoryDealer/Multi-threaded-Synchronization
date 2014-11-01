@@ -53,26 +53,7 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 	Uint asteroidIndex = 0;
 
 	while (hwnd != nullptr){		
-		UpdateWindow(hwnd);
-
-		// Update asteroids awaiting destruction.
-		std::string buffer = "Asteroids Awaiting Destruction: " + 
-			toString(55 - tfc->getNumAsteroidsDestroyed());
-		SetDlgItemText(hwnd, IDC_STATIC_NUMASTEROIDS, buffer.c_str());
-
-		// Update asteroids destroyed.
-		buffer = "Asteroids Successfully Destroyed: " +
-			toString(tfc->getNumAsteroidsDestroyed());
-		SetDlgItemText(hwnd, IDC_STATIC_ASTEROIDS_DESTROYED, buffer.c_str());
-
-		// Update number of asteroids in stack.
-		buffer = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
-		SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, buffer.c_str());
-
-		// Update number of probes.
-		buffer = "Launched Probes (Size: " +
-			toString(tfc->getNumProbes()) + ")";
-		SetDlgItemText(hwnd, IDC_STATIC_LIST_PROBES_TITLE, buffer.c_str());
+		UpdateWindow(hwnd);						
 
 		// Check for GUI events from TFC.
 		if (tfc->hasGUIEvent()){
@@ -98,6 +79,10 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 					// Update the TFC log.
 					SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
 									reinterpret_cast<LPARAM>("New asteroid discovered!"));
+
+					// Update number of asteroids in stack.
+					std::string buffer = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
+					SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, buffer.c_str());
 				}
 				break;
 
@@ -111,6 +96,24 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 					if (index != -1){
 						SendMessage(hList, LVM_DELETEITEM, static_cast<WPARAM>(index), 0);
 					}
+
+					// Update number of asteroids in stack.
+					std::string buffer = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
+					SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, buffer.c_str());
+				}
+				break;
+
+			case GUIEventType::ASTEROID_DESTROYED:
+				{
+					// Update asteroids awaiting destruction.
+					std::string buffer = "Asteroids Awaiting Destruction: " + 
+						toString(55 - tfc->getNumAsteroidsDestroyed());
+					SetDlgItemText(hwnd, IDC_STATIC_NUMASTEROIDS, buffer.c_str());
+
+					// Update asteroids destroyed.
+					buffer = "Asteroids Successfully Destroyed: " +
+						toString(tfc->getNumAsteroidsDestroyed());
+					SetDlgItemText(hwnd, IDC_STATIC_ASTEROIDS_DESTROYED, buffer.c_str());
 				}
 				break;
 
@@ -128,6 +131,11 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 					if (index != -1){
 						SendMessage(hList, LVM_DELETEITEM, static_cast<WPARAM>(index), 0);
 					}
+
+					// Update number of probes.
+					std::string buffer = "Launched Probes (Size: " +
+						toString(tfc->getNumProbes()) + ")";
+					SetDlgItemText(hwnd, IDC_STATIC_LIST_PROBES_TITLE, buffer.c_str());
 				}
 				break;
 			}

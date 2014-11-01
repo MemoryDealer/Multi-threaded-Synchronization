@@ -19,11 +19,13 @@ m_socket(INVALID_SOCKET),
 m_server(nullptr),
 m_pClock(nullptr),
 m_weaponRechargeTime(0),
-m_weaponPower(0)
+m_weaponPower(0),
+m_generator()
 {
 	// Allocate timer for scout probe.
 	if (m_type == Probe::Type::SCOUT){
-		m_pClock.reset(new Timer());
+		m_pClock.reset(new Timer());		
+		m_generator.seed(GetTickCount());
 	}
 	else if (m_type == Probe::Type::PHOTON){
 		m_weaponRechargeTime = 3000;
@@ -165,22 +167,19 @@ void Probe::update(void)
 					}
 
 					// Wait random length of time to discover asteroid according to Poisson
-					// distribution.
-					std::default_random_engine generator;
-					generator.seed(GetTickCount());
+					// distribution.										
 					std::poisson_distribution<int> poissonDistribution(4.0);
-					int sleepTime = poissonDistribution(generator) * 1000;
+					int sleepTime = poissonDistribution(m_generator) * 1000;
 					Sleep(sleepTime);
 
 					// Allocate data for newly discovered asteroid.
 					static Uint asteroidIDCtr = 0;
 					Asteroid asteroid;
-					asteroid.id = asteroidIDCtr++;
-					asteroid.discoveryTime = msg.time + discoveryClock.getTicks();
+					asteroid.id = asteroidIDCtr++;					
 
 					// Determine asteroid mass based on step function.
 					std::uniform_real_distribution<float> massDistribution(0.0, 1.0);
-					float step = massDistribution(generator);
+					float step = massDistribution(m_generator);
 					if (step < 0.2){
 						asteroid.mass = 3;
 					}
@@ -196,7 +195,9 @@ void Probe::update(void)
 
 					// Determine time to impact based on uniform distribution.
 					std::uniform_int_distribution<int> impactDistribution(0, 15);
-					asteroid.timeToImpact = impactDistribution(generator) * 1000;
+					asteroid.timeToImpact = impactDistribution(m_generator) * 1000;
+
+					asteroid.discoveryTime = msg.time + discoveryClock.getTicks();
 
 					// Send the asteroid data to TFC.
 					ZeroMemory(&msg, sizeof(msg));
@@ -225,7 +226,7 @@ void Probe::update(void)
 							Uint timeRequired = this->timeRequired(msg.asteroid);
 							printf("------------\nTime required to destroy asteroid: %d\nCurrentTime: %d\nTimeFound: %d\nTimeLeft: %d\n------------\n", 
 									timeRequired, msg.time, msg.asteroid.discoveryTime, msg.asteroid.timeToImpact);
-							if (msg.asteroid.discoveryTime + msg.asteroid.timeToImpact > msg.time + timeRequired){
+							if (msg.time + timeRequired < msg.asteroid.discoveryTime + msg.asteroid.timeToImpact){
 								printf("\tThere is time.\n");
 
 								// Destroy the asteroid.

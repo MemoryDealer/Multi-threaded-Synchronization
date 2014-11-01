@@ -73,6 +73,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Net.cpp" />
     <ClCompile Include="Probe.cpp" />
+    <ClCompile Include="Semaphore.cpp" />
     <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="TFC.cpp" />
     <ClCompile Include="Timer.cpp" />
@@ -83,6 +84,7 @@
     <ClInclude Include="Net.hpp" />
     <ClInclude Include="Probe.hpp" />
     <ClInclude Include="resource.h" />
+    <ClInclude Include="Semaphore.hpp" />
     <ClInclude Include="Singleton.hpp" />
     <ClInclude Include="stdafx.hpp" />
     <ClInclude Include="TFC.hpp" />

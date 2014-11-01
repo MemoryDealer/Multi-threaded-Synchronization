@@ -27,6 +27,8 @@ typedef unsigned int Uint;
 // C++ STL
 #include <memory>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <string>
 #include <sstream>
 #include <vector>

@@ -15,6 +15,7 @@
 #include "Probe.hpp"
 #include "Net.hpp"
 #include "Timer.hpp"
+#include "Semaphore.hpp"
 
 // ================================================ //
 
@@ -39,6 +40,7 @@ enum GUIEventType{
 	UPDATE,
 	ASTEROID_FOUND,
 	ASTEROID_REMOVED,
+	ASTEROID_DESTROYED,
 	SHIELDS_HIT,
 	PROBE_TERMINATED
 };
@@ -95,6 +97,7 @@ public:
 
 private:
 	AsteroidContainer m_asteroids;
+	Semaphore m_mutex, m_empty, m_full;
 	std::vector<ProbeRecord> m_probes;
 	SOCKET m_socket;
 	bool m_fleetAlive, m_inAsteroidField;

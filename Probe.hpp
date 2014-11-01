@@ -96,6 +96,7 @@ private:
 	std::shared_ptr<Timer> m_pClock;
 	int m_weaponRechargeTime;
 	int m_weaponPower;
+	std::default_random_engine m_generator;
 };
 
 // ================================================ //

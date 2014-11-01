@@ -18,6 +18,7 @@ const std::string TFC::Port = "27876";
 
 TFC::TFC(void) :
 m_asteroids(),
+m_mutex(1), m_empty(15), m_full(0),
 m_probes(),
 m_socket(INVALID_SOCKET),
 m_fleetAlive(true),
@@ -202,7 +203,8 @@ void TFC::updateProbe(const ProbeRecord& probe)
 					break;
 
 				case Probe::MessageType::ASTEROID_FOUND:
-
+					m_empty.wait();
+					m_mutex.wait();
 					if (m_asteroids.insert(msg.asteroid))
 					{
 						// Inform main GUI of new asteroid.
@@ -217,6 +219,8 @@ void TFC::updateProbe(const ProbeRecord& probe)
 						e.type = GUIEventType::SHIELDS_HIT;
 						m_guiEvents.push(e);
 					}
+					m_mutex.signal();
+					m_full.signal();
 					break;
 
 				case Probe::MessageType::DEFENSIVE_REQUEST:
@@ -226,6 +230,8 @@ void TFC::updateProbe(const ProbeRecord& probe)
 							response.type = Probe::MessageType::NO_TARGET;
 						}
 						else{
+							m_full.wait();
+							m_mutex.wait();
 							response.type = Probe::MessageType::TARGET_AVAILABLE;
 							response.time = m_pClock->getTicks();
 							response.asteroid = m_asteroids.remove();
@@ -235,6 +241,9 @@ void TFC::updateProbe(const ProbeRecord& probe)
 							e.type = GUIEventType::ASTEROID_REMOVED;
 							e.x = response.asteroid.id;
 							m_guiEvents.push(e);
+
+							m_mutex.signal();
+							m_empty.signal();
 						}
 
 						// Send the requested data to the probe.
@@ -248,6 +257,12 @@ void TFC::updateProbe(const ProbeRecord& probe)
 				case Probe::MessageType::TARGET_DESTROYED:
 					printf("TARGET DESTROYED!\n");
 					++m_asteroidsDestroyed;
+					{
+						GUIEvent e;
+						e.type = GUIEventType::ASTEROID_DESTROYED;
+						e.x = probe.id;
+						m_guiEvents.push(e);
+					}
 					break;
 
 				case Probe::MessageType::TERMINATED:
