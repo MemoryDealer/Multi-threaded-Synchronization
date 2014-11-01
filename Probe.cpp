@@ -145,30 +145,24 @@ void Probe::update(void)
 				{					
 					Timer discoveryClock(true);
 					Probe::Message msg;
-					// Connect to TFC and send scout request.
-					m_socket = socket(m_server->ai_family, m_server->ai_socktype, m_server->ai_protocol);
-					if (connect(m_socket, m_server->ai_addr,
-						static_cast<int>(m_server->ai_addrlen)) != SOCKET_ERROR){
-						// Send request with data.
+					// Send request with data.
 						
-						msg.type = Probe::MessageType::SCOUT_REQUEST;
-						int s = send(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
-						if (s > 0){
-							ZeroMemory(&msg, sizeof(msg));
-							int r = recv(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
-							if (r > 0){
-								switch (msg.type){
-								default:
-									break;
+					msg.type = Probe::MessageType::SCOUT_REQUEST;
+					int s = send(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
+					if (s > 0){
+						ZeroMemory(&msg, sizeof(msg));
+						int r = recv(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
+						if (r > 0){
+							switch (msg.type){
+							default:
+								break;
 
-								case Probe::MessageType::SCOUT_REQUEST:
+							case Probe::MessageType::SCOUT_REQUEST:
 
-									break;
-								}
+								break;
 							}
 						}
 					}
-					closesocket(m_socket);
 
 					// Wait random length of time to discover asteroid according to Poisson
 					// distribution.
@@ -205,96 +199,74 @@ void Probe::update(void)
 					asteroid.timeToImpact = impactDistribution(generator) * 1000;
 
 					// Send the asteroid data to TFC.
-					m_socket = socket(m_server->ai_family, m_server->ai_socktype, m_server->ai_protocol);
-					if (connect(m_socket, m_server->ai_addr,
-						static_cast<int>(m_server->ai_addrlen)) != SOCKET_ERROR){
-						Probe::Message msg;
-						msg.type = Probe::MessageType::ASTEROID_FOUND;
-						msg.asteroid = asteroid;
-						int s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
-						if (s > 0){
+					ZeroMemory(&msg, sizeof(msg));
+					msg.type = Probe::MessageType::ASTEROID_FOUND;
+					msg.asteroid = asteroid;
+					s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+					if (s > 0){
 
-						}
 					}
-					closesocket(m_socket);
 				}
 				break;
 
 			case Probe::Type::PHASER:
 			case Probe::Type::PHOTON:
 				// Connect to TFC and send defensive request.
-				m_socket = socket(m_server->ai_family, m_server->ai_socktype, m_server->ai_protocol);
-				if (connect(m_socket, m_server->ai_addr,
-					static_cast<int>(m_server->ai_addrlen)) != SOCKET_ERROR){
-					Probe::Message msg;
-					msg.type = Probe::MessageType::DEFENSIVE_REQUEST;
-					int s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
-					if (s > 0){
-						// Receive data.
-						ZeroMemory(&msg, sizeof(msg));
-						int r = recv(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
-						if (r > 0){
-							if (msg.type == Probe::MessageType::TARGET_AVAILABLE){
-								// See if we have time to destroy the asteroid.
-								Uint timeRequired = this->timeRequired(msg.asteroid);
-								printf("------------\nTime required to destroy asteroid: %d\nCurrentTime: %d\nTimeFound: %d\nTimeLeft: %d\n------------\n", 
-									   timeRequired, msg.time, msg.asteroid.discoveryTime, msg.asteroid.timeToImpact);
-								if (msg.asteroid.discoveryTime + msg.asteroid.timeToImpact > msg.time + timeRequired){
-									printf("\tThere is time.\n");
-									// Close connection to TFC until asteroid is dealt with.
-									closesocket(m_socket);
+				Probe::Message msg;
+				msg.type = Probe::MessageType::DEFENSIVE_REQUEST;
+				int s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+				if (s > 0){
+					// Receive data.
+					ZeroMemory(&msg, sizeof(msg));
+					int r = recv(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
+					if (r > 0){
+						if (msg.type == Probe::MessageType::TARGET_AVAILABLE){
+							// See if we have time to destroy the asteroid.
+							Uint timeRequired = this->timeRequired(msg.asteroid);
+							printf("------------\nTime required to destroy asteroid: %d\nCurrentTime: %d\nTimeFound: %d\nTimeLeft: %d\n------------\n", 
+									timeRequired, msg.time, msg.asteroid.discoveryTime, msg.asteroid.timeToImpact);
+							if (msg.asteroid.discoveryTime + msg.asteroid.timeToImpact > msg.time + timeRequired){
+								printf("\tThere is time.\n");
 
-									// Destroy the asteroid.
-									Sleep(timeRequired);
+								// Destroy the asteroid.
+								Sleep(timeRequired);
 
-									// Asteroid destroyed, report to TFC.
-									m_socket = socket(m_server->ai_family, m_server->ai_socktype, m_server->ai_protocol);
-									if (connect(m_socket, m_server->ai_addr,
-										static_cast<int>(m_server->ai_addrlen)) != SOCKET_ERROR){
-										ZeroMemory(&msg, sizeof(msg));
-										msg.type = Probe::MessageType::TARGET_DESTROYED;
-										msg.id = m_id;
-										s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
-										if (s > 0){
+								// Asteroid destroyed, report to TFC.
+								ZeroMemory(&msg, sizeof(msg));
+								msg.type = Probe::MessageType::TARGET_DESTROYED;
+								msg.id = m_id;
+								s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+								if (s > 0){
 											
-										}
-									}
-									else{
-										printf("ERROR: %ld - Failed to reconnect to TFC to report asteroid destruction.\n", WSAGetLastError());
-									}
-
-									// Allow weapon to recharge.
-									Sleep(m_weaponRechargeTime);
 								}
-								else{
-									printf("\tNo time! Collision imminent!\n");
-									Sleep(msg.asteroid.timeToImpact);
 
-									// Report termination to TFC.
-									m_socket = socket(m_server->ai_family, m_server->ai_socktype, m_server->ai_protocol);
-									if (connect(m_socket, m_server->ai_addr,
-										static_cast<int>(m_server->ai_addrlen)) != SOCKET_ERROR){
-										ZeroMemory(&msg, sizeof(msg));
-										msg.type = Probe::MessageType::TERMINATED;
-										msg.id = m_id;
-										s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
-										m_state = Probe::State::DESTROYED;
-									}
-									closesocket(m_socket);
-									break;
-								}
+								// Allow weapon to recharge.
+								Sleep(m_weaponRechargeTime);
 							}
-							else if(msg.type == Probe::MessageType::NO_TARGET){
-								Sleep(500);
+							else{
+								printf("\tNo time! Collision imminent!\n");
+								Sleep(msg.asteroid.timeToImpact);
+
+								// Report termination to TFC.								
+								ZeroMemory(&msg, sizeof(msg));
+								msg.type = Probe::MessageType::TERMINATED;
+								msg.id = m_id;
+								s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+								m_state = Probe::State::DESTROYED;								
+								break;
 							}
+						}
+						else if(msg.type == Probe::MessageType::NO_TARGET){
+							Sleep(500);
 						}
 					}
 				}
-				closesocket(m_socket);
 				break;
 			}
 		}
 	}
+
+	closesocket(m_socket);
 }
 
 // ================================================ //

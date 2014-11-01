@@ -19,7 +19,7 @@
 // ================================================ //
 
 struct ProbeRecord{	
-	IPAddress ip;
+	SOCKET socket;
 	Uint id;
 	Uint type;
 	Uint state;
@@ -61,8 +61,11 @@ public:
 	// Sets the local flag m_inAsteroidField to true.
 	void enterAsteroidField(void);
 
-	// Accept requests from probes and process them.
-	void update(void);
+	// Accept launch requests from probes and process them.
+	void launchProbes(void);
+
+	// Process requests from a single probe.
+	void updateProbe(const ProbeRecord& probe);
 
 	// Getters
 
@@ -105,6 +108,7 @@ private:
 
 inline void TFC::enterAsteroidField(void){
 	m_inAsteroidField = true;
+	m_pClock->restart();
 }
 
 // Getters

@@ -85,7 +85,7 @@ int TFC::init(void)
 	}
 
 	// Spawn a thread to accept new probe connections.
-	std::thread t(&TFC::update, this);
+	std::thread t(&TFC::launchProbes, this);
 	// Allow continued execution of calling thread.
 	t.detach(); 
 
@@ -94,11 +94,9 @@ int TFC::init(void)
 
 // ================================================ //
 
-void TFC::update(void)
+void TFC::launchProbes(void)
 {
-	m_pClock->restart();
-
-	while (m_fleetAlive == true){
+	while (true){
 		// Accept incoming probe requests.
 		struct sockaddr_in probeInfo = { 0 };
 		int size = sizeof(probeInfo);
@@ -135,16 +133,53 @@ void TFC::update(void)
 
 						// Add probe to TFC list of probes.
 						ProbeRecord probe;
+						probe.socket = probeSocket;
 						probe.id = confirm.id;
-						probe.ip = ip;
 						probe.type = msg.LaunchRequest.type;
 						probe.state = 0;
 						m_probes.push_back(probe);
+
+						// Spawn a thread to handle the new probe.
+						std::thread t(&TFC::updateProbe, this, probe);
+						t.detach();
 					}
 				}
 			}
-			// Process messages while navigating asteroid field.
+			// Don't allow new probe launches while navigating asteroid field.
 			else{
+				
+			}
+		}
+		else{
+			// Report error...
+		}
+
+		// Update.
+		if (m_asteroidsDestroyed > 55){
+			m_inAsteroidField = false;
+		}
+		else{
+			if (m_shields <= 0){
+				m_inAsteroidField = false;
+				m_fleetAlive = false;
+			}
+		}
+	}
+}
+
+// ================================================ //
+
+void TFC::updateProbe(const ProbeRecord& probe)
+{
+	printf("New updateProbe() thread with ID = %d\n", probe.id);
+
+	while (m_fleetAlive){
+		// Receive the request.
+		if (m_inAsteroidField){
+			int r = 0;
+			Probe::Message msg;
+			r = recv(probe.socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
+			if (r > 0){
 				switch (msg.type){
 				default:
 					break;
@@ -158,10 +193,10 @@ void TFC::update(void)
 						Probe::Message response;
 						// Ack request.
 						response.type = Probe::MessageType::SCOUT_REQUEST;
-						response.time = m_pClock->getTicks();						
-						int s = send(probeSocket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
+						response.time = m_pClock->getTicks();
+						int s = send(probe.socket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
 						if (s > 0){
-						
+
 						}
 					}
 					break;
@@ -203,9 +238,9 @@ void TFC::update(void)
 						}
 
 						// Send the requested data to the probe.
-						int s = send(probeSocket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
+						int s = send(probe.socket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
 						if (s > 0){
-						
+
 						}
 					}
 					break;
@@ -219,7 +254,7 @@ void TFC::update(void)
 					{
 						// Probe destroyed, remove from probe list.		
 						for (std::vector<ProbeRecord>::iterator itr = m_probes.begin();
-							 itr != m_probes.end();){
+							itr != m_probes.end();){
 							if (itr->id == msg.id){
 								itr = m_probes.erase(itr);
 								break;
@@ -241,22 +276,11 @@ void TFC::update(void)
 			}
 		}
 		else{
-			// Report error...
-		}
-
-		closesocket(probeSocket);
-
-		// Update.
-		if (m_asteroidsDestroyed > 55){
-			m_inAsteroidField = false;
-		}
-		else{
-			if (m_shields <= 0){
-				m_inAsteroidField = false;
-				m_fleetAlive = false;
-			}
+			Sleep(100);
 		}
 	}
+
+	closesocket(probe.socket);
 }
 
 // ================================================ //

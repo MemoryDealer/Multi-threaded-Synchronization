@@ -296,13 +296,16 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 // ================================================ //
 
-//int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, 
-//					 LPSTR lpszArg, int nFunsterStil)
-int main(int argc, char** argv)
+#ifdef _DEBUG
+	int main(int argc, char** argv)
+#else
+	int APIENTRY WinMain(HINSTANCE hInst, HINSTANCE hPrevInst, 
+					 LPSTR lpszArg, int nFunsterStil)
+#endif
 {
 	// Initialize Winsock, begin using WS2_32.DLL.
 	WSAData wsaData;
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0){
+	if (WSAStartup(0x101, &wsaData) != 0){
 		return 1;
 	}
 
