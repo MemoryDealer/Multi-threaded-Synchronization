@@ -175,7 +175,13 @@ void Probe::update(void)
 					// Allocate data for newly discovered asteroid.
 					static Uint asteroidIDCtr = 0;
 					Asteroid asteroid;
-					asteroid.id = asteroidIDCtr++;					
+					asteroid.id = asteroidIDCtr++;			
+					if (msg.time == 0){
+						asteroid.discoveryTime = 0;
+					}
+					else{
+						asteroid.discoveryTime = msg.time + discoveryClock.getTicks();
+					}
 
 					// Determine asteroid mass based on step function.
 					std::uniform_real_distribution<float> massDistribution(0.0, 1.0);
@@ -195,9 +201,7 @@ void Probe::update(void)
 
 					// Determine time to impact based on uniform distribution.
 					std::uniform_int_distribution<int> impactDistribution(0, 15);
-					asteroid.timeToImpact = impactDistribution(m_generator) * 1000;
-
-					asteroid.discoveryTime = msg.time + discoveryClock.getTicks();
+					asteroid.timeToImpact = impactDistribution(m_generator) * 1000;					
 
 					// Send the asteroid data to TFC.
 					ZeroMemory(&msg, sizeof(msg));

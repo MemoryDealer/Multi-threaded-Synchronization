@@ -203,24 +203,26 @@ void TFC::updateProbe(const ProbeRecord& probe)
 					break;
 
 				case Probe::MessageType::ASTEROID_FOUND:
-					m_empty.wait();
-					m_mutex.wait();
-					if (m_asteroids.insert(msg.asteroid))
-					{
-						// Inform main GUI of new asteroid.
-						GUIEvent e;
-						e.type = GUIEventType::ASTEROID_FOUND;
-						e.asteroid = msg.asteroid;
-						m_guiEvents.push(e);
-					}
-					else{
+					if (m_asteroids.full()){
 						--m_shields;
 						GUIEvent e;
 						e.type = GUIEventType::SHIELDS_HIT;
 						m_guiEvents.push(e);
 					}
-					m_mutex.signal();
-					m_full.signal();
+					else{
+						m_empty.wait();
+						m_mutex.wait();
+						if (m_asteroids.insert(msg.asteroid))
+						{
+							// Inform main GUI of new asteroid.
+							GUIEvent e;
+							e.type = GUIEventType::ASTEROID_FOUND;
+							e.asteroid = msg.asteroid;
+							m_guiEvents.push(e);
+						}
+						m_mutex.signal();
+						m_full.signal();
+					}
 					break;
 
 				case Probe::MessageType::DEFENSIVE_REQUEST:
