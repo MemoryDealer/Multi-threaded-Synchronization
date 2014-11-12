@@ -42,7 +42,8 @@ enum GUIEventType{
 	ASTEROID_REMOVED,
 	ASTEROID_DESTROYED,
 	SHIELDS_HIT,
-	PROBE_TERMINATED
+	PROBE_TERMINATED,
+	FLEET_DESTROYED
 };
 
 // ================================================ //
@@ -59,6 +60,9 @@ public:
 	// Sets up server socket, binds and begins listening.
 	// Returns zero on success, otherwise the error code is returned.
 	int init(void);
+
+	// Resets all internal variables to prepare for another simulation.
+	void reset(void);
 
 	// Sets the local flag m_inAsteroidField to true.
 	void enterAsteroidField(void);

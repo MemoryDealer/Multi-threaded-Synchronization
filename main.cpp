@@ -138,6 +138,14 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 					SetDlgItemText(hwnd, IDC_STATIC_LIST_PROBES_TITLE, buffer.c_str());
 				}
 				break;
+
+			case GUIEventType::FLEET_DESTROYED:
+				EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_ADD_PROBE), TRUE);				
+				SetDlgItemText(hwnd, IDC_STATIC_STATUS, "Fleet Status: Standing By");
+				tfc->reset();
+				MessageBox(hwnd, "The fleet has been destroyed!", "Failure", 
+						   MB_OK | MB_ICONWARNING);
+				break;
 			}
 		}
 
@@ -239,6 +247,9 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			std::string buf("Launched Probes (Size: " + toString(probes.size()) + std::string(")"));
 			SetDlgItemText(hwnd, IDC_STATIC_LIST_PROBES_TITLE, buf.c_str());
 
+			SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
+							   reinterpret_cast<LPARAM>("Class M planet Talos IV discovered, routing coordinates..."));
+
 			// Create thread for updating time.
 			std::thread t(&UpdateGUI, hwnd, &tfc);
 			t.detach();
@@ -256,6 +267,7 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		case IDC_BUTTON_START:
 			{
 				EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_ADD_PROBE), FALSE);
+				SetDlgItemText(hwnd, IDC_STATIC_STATUS, "Fleet Status: Navigating Field");
 				tfc.enterAsteroidField();
 			}			
 			break;

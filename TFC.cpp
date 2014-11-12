@@ -95,6 +95,17 @@ int TFC::init(void)
 
 // ================================================ //
 
+void TFC::reset(void)
+{
+	m_probes.clear();
+	m_fleetAlive = true;
+	m_shields = 5;
+	m_asteroidsDestroyed = 0;
+	
+}
+
+// ================================================ //
+
 void TFC::launchProbes(void)
 {
 	while (true){
@@ -153,17 +164,6 @@ void TFC::launchProbes(void)
 		}
 		else{
 			// Report error...
-		}
-
-		// Update.
-		if (m_asteroidsDestroyed > 55){
-			m_inAsteroidField = false;
-		}
-		else{
-			if (m_shields <= 0){
-				m_inAsteroidField = false;
-				m_fleetAlive = false;
-			}
 		}
 	}
 }
@@ -291,10 +291,27 @@ void TFC::updateProbe(const ProbeRecord& probe)
 					break;
 				}
 			}
+
+			// Only allow the scout probe to check destruction conditions.
+			// This prevents possible race conditions in this step.
+			if (probe.type == Probe::Type::SCOUT){
+				// If only the scout probe remains, or shields are gone, trigger fleet destruction.
+				if (m_probes.size() == 1 || m_shields == 0){
+					m_fleetAlive = m_inAsteroidField = false;										
+					GUIEvent e;
+					e.type = GUIEventType::FLEET_DESTROYED;
+					m_guiEvents.push(e);
+					// signal probes to terminate...
+				}
+				else if (m_asteroidsDestroyed >= 55){
+					// Report success.
+					// This will never happen.
+				}
+			}
 		}
 		else{
-			Sleep(100);
-		}
+			Sleep(1);
+		}		
 	}
 
 	closesocket(probe.socket);

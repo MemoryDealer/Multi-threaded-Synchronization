@@ -17,7 +17,6 @@ m_type(type),
 m_state(Probe::State::ACTIVE),
 m_socket(INVALID_SOCKET),
 m_server(nullptr),
-m_pClock(nullptr),
 m_weaponRechargeTime(0),
 m_weaponPower(0),
 m_generator()
@@ -296,3 +295,14 @@ const Uint Probe::timeRequired(const Asteroid& a)
 }
 
 // ================================================ //
+// ================================================ //
+
+ScoutProbe::ScoutProbe(void) :
+Probe(),
+m_pClock(nullptr)
+{
+
+}
+
+// ================================================ //
+

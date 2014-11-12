@@ -22,16 +22,16 @@ class Probe
 {
 public:
 	// Default initializes all member variables.
-	explicit Probe(const Uint type);
+	explicit Probe(void);
 
 	// Closes the socket.
-	~Probe(void);
+	virtual ~Probe(void);
 
 	// Setup probe data and connect to TFC.
 	bool launch(void);
 
 	// Thread which processes probe actions.
-	void update(void);
+	virtual void update(void) = 0;
 
 	// Prints an error message with Probe ID.
 	void reportError(const char* msg);
@@ -93,7 +93,6 @@ private:
 	Uint m_state;
 	SOCKET m_socket;
 	struct addrinfo* m_server;	
-	std::shared_ptr<Timer> m_pClock;
 	int m_weaponRechargeTime;
 	int m_weaponPower;
 	std::default_random_engine m_generator;
@@ -110,6 +109,18 @@ inline const Uint Probe::getID(void) const{
 inline const Uint Probe::getState(void) const{
 	return m_state;
 }
+
+// ================================================ //
+// ================================================ //
+
+class ScoutProbe : public Probe
+{
+public:
+	explicit ScoutProbe(void);
+
+private:
+	std::shared_ptr<Timer> m_pClock;
+};
 
 // ================================================ //
 
