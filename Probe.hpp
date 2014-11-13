@@ -22,16 +22,16 @@ class Probe
 {
 public:
 	// Default initializes all member variables.
-	explicit Probe(void);
+	explicit Probe(const Uint type);
 
 	// Closes the socket.
-	virtual ~Probe(void);
+	~Probe(void);
 
 	// Setup probe data and connect to TFC.
 	bool launch(void);
 
 	// Thread which processes probe actions.
-	virtual void update(void) = 0;
+	void update(void);
 
 	// Prints an error message with Probe ID.
 	void reportError(const char* msg);
@@ -39,6 +39,16 @@ public:
 	// Returns time required in milliseconds to destroy Asteroid a.
 	const Uint timeRequired(const Asteroid& a);
 
+	/// Asteroid discovery randomization functions.
+	// Returns amount of time to discovery of next asteroid (ms).
+	const Uint scoutDiscoveryTime(void);
+
+	// Returns size of asteroid.
+	const Uint scoutAsteroidSize(void);
+
+	// Returns time to impact of asteroid (ms).
+	const Uint scoutTimeToImpact(void);
+	
 	// Getters
 
 	// Returns Probe ID in string format.
@@ -109,18 +119,6 @@ inline const Uint Probe::getID(void) const{
 inline const Uint Probe::getState(void) const{
 	return m_state;
 }
-
-// ================================================ //
-// ================================================ //
-
-class ScoutProbe : public Probe
-{
-public:
-	explicit ScoutProbe(void);
-
-private:
-	std::shared_ptr<Timer> m_pClock;
-};
 
 // ================================================ //
 

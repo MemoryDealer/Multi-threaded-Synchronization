@@ -26,7 +26,8 @@ m_inAsteroidField(false),
 m_shields(5),
 m_asteroidsDestroyed(0),
 m_pClock(new Timer()),
-m_guiEvents()
+m_guiEvents(),
+m_scoutActive(false)
 {
 	int ret = this->init();
 	printf("setupServer() = %d\n", ret);
@@ -101,7 +102,7 @@ void TFC::reset(void)
 	m_fleetAlive = true;
 	m_shields = 5;
 	m_asteroidsDestroyed = 0;
-	
+	m_scoutActive = false;
 }
 
 // ================================================ //
@@ -177,6 +178,34 @@ void TFC::updateProbe(const ProbeRecord& probe)
 	while (m_fleetAlive){
 		// Receive the request.
 		if (m_inAsteroidField){
+			// Only allow the scout probe to check destruction conditions.
+			// This prevents possible race conditions in this step.
+			if (probe.type == Probe::Type::SCOUT){
+				// First, activate the scout probe if this is the first iteration.
+				if (m_scoutActive == false){
+					Probe::Message activate;
+					activate.type = Probe::MessageType::SCOUT_REQUEST;
+					int s = send(probe.socket, reinterpret_cast<const char*>(&activate), sizeof(activate), 0);
+					if (s > 0){
+						m_scoutActive = true;
+					}
+				}
+
+				// If only the scout probe remains, or shields are gone, trigger fleet destruction.
+				if (m_probes.size() == 1 || m_shields == 0){
+					m_fleetAlive = m_inAsteroidField = false;
+					Timer::Delay(1500);
+					GUIEvent e;
+					e.type = GUIEventType::FLEET_DESTROYED;
+					m_guiEvents.push(e);
+					// signal probes to terminate...
+				}
+				else if (m_asteroidsDestroyed >= 55){
+					// Report success.
+					// This will never happen.
+				}
+			}
+
 			int r = 0;
 			Probe::Message msg;
 			r = recv(probe.socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
@@ -291,26 +320,9 @@ void TFC::updateProbe(const ProbeRecord& probe)
 					break;
 				}
 			}
-
-			// Only allow the scout probe to check destruction conditions.
-			// This prevents possible race conditions in this step.
-			if (probe.type == Probe::Type::SCOUT){
-				// If only the scout probe remains, or shields are gone, trigger fleet destruction.
-				if (m_probes.size() == 1 || m_shields == 0){
-					m_fleetAlive = m_inAsteroidField = false;										
-					GUIEvent e;
-					e.type = GUIEventType::FLEET_DESTROYED;
-					m_guiEvents.push(e);
-					// signal probes to terminate...
-				}
-				else if (m_asteroidsDestroyed >= 55){
-					// Report success.
-					// This will never happen.
-				}
-			}
 		}
 		else{
-			Sleep(1);
+			Timer::Delay(1);
 		}		
 	}
 

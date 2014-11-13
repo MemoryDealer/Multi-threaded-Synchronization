@@ -14,7 +14,7 @@
 Probe::Probe(const Uint type) :
 m_id(0),
 m_type(type),
-m_state(Probe::State::ACTIVE),
+m_state(Probe::State::STANDBY),
 m_socket(INVALID_SOCKET),
 m_server(nullptr),
 m_weaponRechargeTime(0),
@@ -22,9 +22,8 @@ m_weaponPower(0),
 m_generator()
 {
 	// Allocate timer for scout probe.
-	if (m_type == Probe::Type::SCOUT){
-		m_pClock.reset(new Timer());		
-		m_generator.seed(GetTickCount());
+	if (m_type == Probe::Type::SCOUT){		
+		m_generator.seed(GetTickCount64());
 	}
 	else if (m_type == Probe::Type::PHOTON){
 		m_weaponRechargeTime = 3000;
@@ -113,11 +112,6 @@ bool Probe::launch(void)
 			printf("Probe %d has received confirmation to launch.\n", m_id);			
 			std::thread t(&Probe::update, this);
 			t.detach();
-
-			// Start the timer for scout probe.
-			if (m_type == Probe::Type::SCOUT){
-				m_pClock->restart();
-			}
 		}
 		else{
 			printf("Probe %d denied launch.\n", m_id);
@@ -136,18 +130,26 @@ bool Probe::launch(void)
 
 void Probe::update(void)
 {
-	while (m_state != Probe::State::DESTROYED){
-		if (m_state == Probe::State::ACTIVE){			
-			switch (m_type){
-			default:
-				break;
+	while (m_state != Probe::State::DESTROYED){		
+		switch (m_type){
+		default:
+			break;
 
-			case Probe::Type::SCOUT:
-				{					
-					Timer discoveryClock(true);
-					Probe::Message msg;
-					// Send request with data.
-						
+		case Probe::Type::SCOUT:
+			{					
+				Timer discoveryClock(true);
+				Probe::Message msg;
+				// Send request with data.
+				if (m_state == Probe::State::STANDBY){
+					int r = recv(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
+					if (r > 0){
+						if (msg.type == Probe::MessageType::SCOUT_REQUEST){
+							// TFC has entered asteroid field, begin scouting.
+							m_state = Probe::State::ACTIVE;
+						}
+					}
+				}
+				else if(m_state == Probe::State::ACTIVE){
 					msg.type = Probe::MessageType::SCOUT_REQUEST;
 					int s = send(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
 					if (s > 0){
@@ -166,15 +168,13 @@ void Probe::update(void)
 					}
 
 					// Wait random length of time to discover asteroid according to Poisson
-					// distribution.										
-					std::poisson_distribution<int> poissonDistribution(4.0);
-					int sleepTime = poissonDistribution(m_generator) * 1000;
-					Sleep(sleepTime);
+					// distribution.															
+					Timer::Delay(this->scoutDiscoveryTime());
 
 					// Allocate data for newly discovered asteroid.
 					static Uint asteroidIDCtr = 0;
 					Asteroid asteroid;
-					asteroid.id = asteroidIDCtr++;			
+					asteroid.id = asteroidIDCtr++;
 					if (msg.time == 0){
 						asteroid.discoveryTime = 0;
 					}
@@ -183,24 +183,10 @@ void Probe::update(void)
 					}
 
 					// Determine asteroid mass based on step function.
-					std::uniform_real_distribution<float> massDistribution(0.0, 1.0);
-					float step = massDistribution(m_generator);
-					if (step < 0.2){
-						asteroid.mass = 3;
-					}
-					else if (step < 0.5){
-						asteroid.mass = 6;
-					}
-					else if (step < 0.7){
-						asteroid.mass = 9;
-					}
-					else{
-						asteroid.mass = 11;
-					}
+					asteroid.mass = this->scoutAsteroidSize();
 
 					// Determine time to impact based on uniform distribution.
-					std::uniform_int_distribution<int> impactDistribution(0, 15);
-					asteroid.timeToImpact = impactDistribution(m_generator) * 1000;					
+					asteroid.impactTime = asteroid.discoveryTime + this->scoutTimeToImpact();
 
 					// Send the asteroid data to TFC.
 					ZeroMemory(&msg, sizeof(msg));
@@ -211,62 +197,62 @@ void Probe::update(void)
 
 					}
 				}
-				break;
+			}
+			break;
 
-			case Probe::Type::PHASER:
-			case Probe::Type::PHOTON:
-				// Connect to TFC and send defensive request.
-				Probe::Message msg;
-				msg.type = Probe::MessageType::DEFENSIVE_REQUEST;
-				int s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
-				if (s > 0){
-					// Receive data.
-					ZeroMemory(&msg, sizeof(msg));
-					int r = recv(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
-					if (r > 0){
-						if (msg.type == Probe::MessageType::TARGET_AVAILABLE){
-							// See if we have time to destroy the asteroid.
-							Uint timeRequired = this->timeRequired(msg.asteroid);
-							printf("------------\nTime required to destroy asteroid: %d\nCurrentTime: %d\nTimeFound: %d\nTimeLeft: %d\n------------\n", 
-									timeRequired, msg.time, msg.asteroid.discoveryTime, msg.asteroid.timeToImpact);
-							if (msg.time + timeRequired < msg.asteroid.discoveryTime + msg.asteroid.timeToImpact){
-								printf("\tThere is time.\n");
+		case Probe::Type::PHASER:
+		case Probe::Type::PHOTON:
+			// Connect to TFC and send defensive request.
+			Probe::Message msg;
+			msg.type = Probe::MessageType::DEFENSIVE_REQUEST;
+			int s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+			if (s > 0){
+				// Receive data.
+				ZeroMemory(&msg, sizeof(msg));
+				int r = recv(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
+				if (r > 0){
+					if (msg.type == Probe::MessageType::TARGET_AVAILABLE){
+						// See if we have time to destroy the asteroid.
+						Uint timeRequired = this->timeRequired(msg.asteroid);
+						printf("------------\nTime required to destroy asteroid: %d\nCurrentTime: %d\nTimeFound: %d\nImpactTime: %d\n------------\n", 
+								timeRequired, msg.time, msg.asteroid.discoveryTime, msg.asteroid.impactTime);
+						if (msg.time < msg.asteroid.impactTime){
+							printf("\tThere is time.\n");
 
-								// Destroy the asteroid.
-								Sleep(timeRequired);
+							// Destroy the asteroid.
+							Timer::Delay(timeRequired);
 
-								// Asteroid destroyed, report to TFC.
-								ZeroMemory(&msg, sizeof(msg));
-								msg.type = Probe::MessageType::TARGET_DESTROYED;
-								msg.id = m_id;
-								s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
-								if (s > 0){
+							// Asteroid destroyed, report to TFC.
+							ZeroMemory(&msg, sizeof(msg));
+							msg.type = Probe::MessageType::TARGET_DESTROYED;
+							msg.id = m_id;
+							s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+							if (s > 0){
 											
-								}
-
-								// Allow weapon to recharge.
-								Sleep(m_weaponRechargeTime);
 							}
-							else{
-								printf("\tNo time! Collision imminent!\n");
-								Sleep(msg.asteroid.timeToImpact);
 
-								// Report termination to TFC.								
-								ZeroMemory(&msg, sizeof(msg));
-								msg.type = Probe::MessageType::TERMINATED;
-								msg.id = m_id;
-								s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
-								m_state = Probe::State::DESTROYED;								
-								break;
-							}
+							// Allow weapon to recharge.
+							Timer::Delay(m_weaponRechargeTime);
 						}
-						else if(msg.type == Probe::MessageType::NO_TARGET){
-							Sleep(500);
+						else{
+							printf("\tNo time! Collision imminent!\n");
+							//Timer::Delay(msg.asteroid.impactTime - msg.time);
+
+							// Report termination to TFC.								
+							ZeroMemory(&msg, sizeof(msg));
+							msg.type = Probe::MessageType::TERMINATED;
+							msg.id = m_id;
+							s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+							m_state = Probe::State::DESTROYED;								
+							break;
 						}
 					}
+					else if(msg.type == Probe::MessageType::NO_TARGET){
+						Timer::Delay(500);
+					}
 				}
-				break;
 			}
+			break;
 		}
 	}
 
@@ -295,14 +281,40 @@ const Uint Probe::timeRequired(const Asteroid& a)
 }
 
 // ================================================ //
-// ================================================ //
 
-ScoutProbe::ScoutProbe(void) :
-Probe(),
-m_pClock(nullptr)
+const Uint Probe::scoutDiscoveryTime(void)
 {
-
+	std::poisson_distribution<int> poissonDistribution(4.0);
+	return (poissonDistribution(m_generator) * 1000);
 }
 
 // ================================================ //
 
+const Uint Probe::scoutAsteroidSize(void)
+{
+	std::uniform_real_distribution<double> massDistribution(0.0, 1.0);
+	double step = massDistribution(m_generator);
+	if (step < 0.2){
+		return 3;
+	}
+	else if (step < 0.5){
+		return 6;
+	}
+	else if (step < 0.7){
+		return 9;
+	}
+	else{
+		return 11;
+	}
+}
+
+// ================================================ //
+
+const Uint Probe::scoutTimeToImpact(void)
+{
+	std::uniform_real_distribution<double> impactDistribution(0.0, 15.0);
+	double time = impactDistribution(m_generator) * 1000.0;
+	return static_cast<Uint>(time);
+}
+
+// ================================================ //

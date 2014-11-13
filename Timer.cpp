@@ -10,6 +10,10 @@
 
 // ================================================ //
 
+Uint Timer::Multiplier = 10;
+
+// ================================================ //
+
 Timer::Timer(const bool start) :
 m_startTicks(0),
 m_pausedTicks(0),
@@ -35,7 +39,7 @@ Uint Timer::restart(void)
 	m_started = true;
 	m_paused = false;
 
-	m_startTicks = GetTickCount();
+	m_startTicks = GetTickCount() * Timer::Multiplier;
 	return m_startTicks;
 }
 
@@ -54,7 +58,7 @@ void Timer::pause(void)
 	if (m_started == true && m_paused == false){
 		m_paused = true;
 
-		m_pausedTicks = GetTickCount() - m_startTicks;
+		m_pausedTicks = GetTickCount() * Timer::Multiplier - m_startTicks;
 	}
 }
 
@@ -65,7 +69,7 @@ void Timer::unpause(void)
 	if (m_paused == true){
 		m_paused = false;
 
-		m_startTicks = GetTickCount() - m_pausedTicks;
+		m_startTicks = GetTickCount() * Timer::Multiplier - m_pausedTicks;
 
 		m_pausedTicks = 0;
 	}
@@ -77,10 +81,17 @@ Uint Timer::getTicks(void)
 {
 	if (m_started == true){
 		return (m_paused == true) ? m_pausedTicks :
-			static_cast<Uint>(GetTickCount() - m_startTicks);
+			static_cast<Uint>(GetTickCount() * Timer::Multiplier - m_startTicks);
 	}
 
 	return 0;
+}
+
+// ================================================ //
+
+void Timer::Delay(const Uint ms)
+{
+	Sleep(ms / Timer::Multiplier);
 }
 
 // ================================================ //

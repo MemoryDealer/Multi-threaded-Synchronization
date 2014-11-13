@@ -21,7 +21,7 @@ struct Asteroid{
 	Uint id;
 	Uint mass;
 	Uint discoveryTime;
-	Uint timeToImpact;
+	Uint impactTime;
 };
 
 // ================================================ //

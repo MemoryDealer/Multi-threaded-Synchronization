@@ -109,6 +109,7 @@ private:
 	Uint m_asteroidsDestroyed;
 	std::shared_ptr<Timer> m_pClock;
 	std::queue<GUIEvent> m_guiEvents;
+	bool m_scoutActive;
 };
 
 // ================================================ //

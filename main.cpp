@@ -14,6 +14,19 @@
 
 // ================================================ //
 
+static void UpdateLog(HWND hwnd, const std::string& str)
+{
+	SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
+					   reinterpret_cast<LPARAM>(str.c_str()));
+
+	// Scroll to last message.
+	int count = SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_GETCOUNT, 0, 0);
+	SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_SETCURSEL,
+					   static_cast<WPARAM>(count - 1), 0);
+}
+
+// ================================================ //
+
 static void AddProbeToList(HWND hList, const Uint id, 
 						   const Uint type, const unsigned state)
 {	
@@ -77,11 +90,12 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 					++asteroidIndex;
 
 					// Update the TFC log.
+					std::string buffer = "Asteroid " + toString(e.asteroid.id) + " discovered.";
 					SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
-									reinterpret_cast<LPARAM>("New asteroid discovered!"));
+									reinterpret_cast<LPARAM>(buffer.c_str()));
 
 					// Update number of asteroids in stack.
-					std::string buffer = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
+					buffer = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
 					SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, buffer.c_str());
 				}
 				break;
@@ -97,8 +111,13 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 						SendMessage(hList, LVM_DELETEITEM, static_cast<WPARAM>(index), 0);
 					}
 
+					// Update TFC log.
+					std::string buffer = "Asteroid " + toString(e.x) + " removed from queue.";
+					SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
+									   reinterpret_cast<LPARAM>(buffer.c_str()));
+
 					// Update number of asteroids in stack.
-					std::string buffer = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
+					buffer = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
 					SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, buffer.c_str());
 				}
 				break;
@@ -114,6 +133,9 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 					buffer = "Asteroids Successfully Destroyed: " +
 						toString(tfc->getNumAsteroidsDestroyed());
 					SetDlgItemText(hwnd, IDC_STATIC_ASTEROIDS_DESTROYED, buffer.c_str());
+
+					buffer = "Asteroid destroyed by probe " + toString(e.x);
+					UpdateLog(hwnd, buffer);
 				}
 				break;
 
@@ -136,6 +158,9 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 					std::string buffer = "Launched Probes (Size: " +
 						toString(tfc->getNumProbes()) + ")";
 					SetDlgItemText(hwnd, IDC_STATIC_LIST_PROBES_TITLE, buffer.c_str());
+
+					buffer = "Probe " + toString(e.x) + " lost!";
+					UpdateLog(hwnd, buffer);
 				}
 				break;
 
@@ -144,7 +169,7 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 				SetDlgItemText(hwnd, IDC_STATIC_STATUS, "Fleet Status: Standing By");
 				tfc->reset();
 				MessageBox(hwnd, "The fleet has been destroyed!", "Failure", 
-						   MB_OK | MB_ICONWARNING);
+						   MB_OK | MB_ICONWARNING | MB_SETFOREGROUND);
 				break;
 			}
 		}
@@ -248,7 +273,8 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			SetDlgItemText(hwnd, IDC_STATIC_LIST_PROBES_TITLE, buf.c_str());
 
 			SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
-							   reinterpret_cast<LPARAM>("Class M planet Talos IV discovered, routing coordinates..."));
+							   reinterpret_cast<LPARAM>("Class M planet Talos IV discovered."));
+			SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, 0x194, static_cast<WPARAM>(250), 0);
 
 			// Create thread for updating time.
 			std::thread t(&UpdateGUI, hwnd, &tfc);

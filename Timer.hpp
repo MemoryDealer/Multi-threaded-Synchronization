@@ -53,6 +53,13 @@ public:
 	// Manually set the start ticks value (determined by GetTickCount() when started).
 	void setStartTicks(const int ticks);
 
+	// Delays the calling thread in ms.
+	static void Delay(const Uint ms);
+
+	// A multiplier applied to speed up the simulation.
+	// e.g., set to 10 to run the simulation at 10x speed.
+	static Uint Multiplier;
+
 private:
 	Uint m_startTicks;
 	Uint m_pausedTicks;
