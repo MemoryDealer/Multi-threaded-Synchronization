@@ -27,6 +27,16 @@ static void UpdateLog(HWND hwnd, const std::string& str)
 
 // ================================================ //
 
+static void UpdateShields(HWND hwnd, const Uint shields)
+{
+	SendDlgItemMessage(hwnd, IDC_PROGRESS_SHIELDS, PBM_SETPOS,
+					   static_cast<WPARAM>(shields), 0);
+	std::string buffer = "Shields (Hits: " + toString(5 - shields) + ")";
+	SetDlgItemText(hwnd, IDC_STATIC_SHIELDS, buffer.c_str());
+}
+
+// ================================================ //
+
 static void AddProbeToList(HWND hList, const Uint id, 
 						   const Uint type, const unsigned state)
 {	
@@ -140,13 +150,11 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 				break;
 
 			case GUIEventType::SHIELDS_HIT:
-				SendDlgItemMessage(hwnd, IDC_PROGRESS_SHIELDS, PBM_SETPOS,
-								   static_cast<WPARAM>(tfc->getShields()), 0);
+				UpdateShields(hwnd, tfc->getShields());
 				break;
 
 			case GUIEventType::PROBE_TERMINATED:
-				SendDlgItemMessage(hwnd, IDC_PROGRESS_SHIELDS, PBM_SETPOS,
-								   static_cast<WPARAM>(tfc->getShields()), 0);
+				UpdateShields(hwnd, tfc->getShields());
 				{
 					HWND hList = GetDlgItem(hwnd, IDC_LIST_PROBES);
 					int index = GetListviewItemIndex(hList, 0, toString(e.x));

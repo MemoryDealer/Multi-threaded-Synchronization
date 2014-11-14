@@ -132,7 +132,7 @@ inline const Uint TFC::getCurrentTime(void) const{
 inline const GUIEvent TFC::getNextGUIEvent(void){
 	GUIEvent next;
 	ZeroMemory(&next, sizeof(next));
-	if (m_guiEvents.size() == 0){
+	if (m_guiEvents.empty()){
 		next.type = GUIEventType::NONE;
 	}
 	else{

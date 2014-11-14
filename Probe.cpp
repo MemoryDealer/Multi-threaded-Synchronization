@@ -174,13 +174,8 @@ void Probe::update(void)
 					// Allocate data for newly discovered asteroid.
 					static Uint asteroidIDCtr = 0;
 					Asteroid asteroid;
-					asteroid.id = asteroidIDCtr++;
-					if (msg.time == 0){
-						asteroid.discoveryTime = 0;
-					}
-					else{
-						asteroid.discoveryTime = msg.time + discoveryClock.getTicks();
-					}
+					asteroid.id = asteroidIDCtr++;					
+					asteroid.discoveryTime = msg.time + discoveryClock.getTicks();
 
 					// Determine asteroid mass based on step function.
 					asteroid.mass = this->scoutAsteroidSize();
@@ -216,7 +211,7 @@ void Probe::update(void)
 						Uint timeRequired = this->timeRequired(msg.asteroid);
 						printf("------------\nTime required to destroy asteroid: %d\nCurrentTime: %d\nTimeFound: %d\nImpactTime: %d\n------------\n", 
 								timeRequired, msg.time, msg.asteroid.discoveryTime, msg.asteroid.impactTime);
-						if (msg.time < msg.asteroid.impactTime){
+						if (msg.time + timeRequired < msg.asteroid.impactTime){
 							printf("\tThere is time.\n");
 
 							// Destroy the asteroid.
@@ -272,6 +267,9 @@ const Uint Probe::timeRequired(const Asteroid& a)
 {
 	int units = a.mass;
 	Uint time = 0;
+	// Initial hit.
+	units -= m_weaponPower;
+	// Process additional hits if needed.
 	while (units > 0){
 		units -= m_weaponPower;
 		time += m_weaponRechargeTime;		
