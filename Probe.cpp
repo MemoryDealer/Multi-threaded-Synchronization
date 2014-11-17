@@ -136,8 +136,7 @@ void Probe::update(void)
 			break;
 
 		case Probe::Type::SCOUT:
-			{					
-				Timer discoveryClock(true);
+			{									
 				Probe::Message msg;
 				// Send request with data.
 				if (m_state == Probe::State::STANDBY){
@@ -150,6 +149,10 @@ void Probe::update(void)
 					}
 				}
 				else if(m_state == Probe::State::ACTIVE){
+					// Wait random length of time to discover asteroid according to Poisson
+					// distribution.															
+					Timer::Delay(this->scoutDiscoveryTime());
+
 					msg.type = Probe::MessageType::SCOUT_REQUEST;
 					int s = send(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
 					if (s > 0){
@@ -167,15 +170,11 @@ void Probe::update(void)
 						}
 					}
 
-					// Wait random length of time to discover asteroid according to Poisson
-					// distribution.															
-					Timer::Delay(this->scoutDiscoveryTime());
-
 					// Allocate data for newly discovered asteroid.
 					static Uint asteroidIDCtr = 0;
 					Asteroid asteroid;
 					asteroid.id = asteroidIDCtr++;					
-					asteroid.discoveryTime = msg.time + discoveryClock.getTicks();
+					asteroid.discoveryTime = msg.time;
 
 					// Determine asteroid mass based on step function.
 					asteroid.mass = this->scoutAsteroidSize();
@@ -258,8 +257,8 @@ const Uint Probe::timeRequired(const Asteroid& a)
 	units -= m_weaponPower;
 	// Process additional hits if needed.
 	while (units > 0){
-		units -= m_weaponPower;
-		time += m_weaponRechargeTime;		
+		time += m_weaponRechargeTime;
+		units -= m_weaponPower;				
 	}
 
 	return time;

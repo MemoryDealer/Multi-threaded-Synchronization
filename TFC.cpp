@@ -272,11 +272,13 @@ void TFC::updateProbe(const ProbeRecord& probe)
 							// Acquire next asteroid.
 							Asteroid a = m_asteroids.remove();							
 
-							// See if there is time to destroy next asteroid.
+							
 							Uint time = m_pClock->getTicks();
 							printf("------------\nCurrentTime: %d\nTimeFound: %d\nImpactTime: %d\n------------\n",
 								   time, a.discoveryTime, a.impactTime);
-							if (a.impactTime > time){
+							// See if there is time to destroy next asteroid.
+							// [if (current time < time found + time to collision)]
+							if (time < a.impactTime){
 								// Send asteroid info to probe.
 								response.asteroid = a;
 								response.type = Probe::MessageType::TARGET_AVAILABLE;
