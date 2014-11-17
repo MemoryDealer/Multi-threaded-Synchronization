@@ -174,8 +174,9 @@ void TFC::launchProbes(void)
 void TFC::updateProbe(const ProbeRecord& probe)
 {
 	printf("New updateProbe() thread with ID = %d\n", probe.id);
+	bool probeAlive = true;
 
-	while (m_fleetAlive){
+	while (m_fleetAlive && probeAlive){
 		// Receive the request.
 		if (m_inAsteroidField){
 			// Only allow the scout probe to check destruction conditions.
@@ -201,8 +202,11 @@ void TFC::updateProbe(const ProbeRecord& probe)
 					// signal probes to terminate...
 				}
 				else if (m_asteroidsDestroyed >= 55){
-					// Report success.
-					// This will never happen.
+					m_inAsteroidField = false;
+					Timer::Delay(1500);
+					GUIEvent e;
+					e.type = GUIEventType::FLEET_SURVIVED;
+					m_guiEvents.push(e);
 				}
 			}
 
@@ -261,18 +265,56 @@ void TFC::updateProbe(const ProbeRecord& probe)
 							response.type = Probe::MessageType::NO_TARGET;
 						}
 						else{
+							// Wait turn, prevent race conditions.
 							m_full.wait();
 							m_mutex.wait();
-							response.type = Probe::MessageType::TARGET_AVAILABLE;
-							response.time = m_pClock->getTicks();
-							response.asteroid = m_asteroids.remove();
 
+							// Acquire next asteroid.
+							Asteroid a = m_asteroids.remove();							
+
+							// See if there is time to destroy next asteroid.
+							Uint time = m_pClock->getTicks();
+							printf("------------\nCurrentTime: %d\nTimeFound: %d\nImpactTime: %d\n------------\n",
+								   time, a.discoveryTime, a.impactTime);
+							if (a.impactTime > time){
+								// Send asteroid info to probe.
+								response.asteroid = a;
+								response.type = Probe::MessageType::TARGET_AVAILABLE;
+								response.time = time;
+							}
+							else{
+								// Send destruction message to probe.
+								response.type = Probe::MessageType::DESTRUCT;
+								response.id = msg.id;
+								probeAlive = false;								
+
+								// Probe destroyed, remove from probe list.		
+								for (std::vector<ProbeRecord>::iterator itr = m_probes.begin();
+									 itr != m_probes.end();){
+									if (itr->id == msg.id){
+										itr = m_probes.erase(itr);
+										break;
+									}
+									else{
+										itr++;
+									}
+								}
+
+								// Take hit on shields and report to GUI.
+								--m_shields;
+								GUIEvent e;
+								e.type = GUIEventType::PROBE_TERMINATED;
+								e.x = msg.id;
+								m_guiEvents.push(e);
+							}
+							
 							// Trigger GUI event to remove asteroid from listview.
 							GUIEvent e;
 							e.type = GUIEventType::ASTEROID_REMOVED;
-							e.x = response.asteroid.id;
+							e.x = a.id;
 							m_guiEvents.push(e);
 
+							// Allow other probes to access asteroid queue.
 							m_mutex.signal();
 							m_empty.signal();
 						}
@@ -298,17 +340,7 @@ void TFC::updateProbe(const ProbeRecord& probe)
 
 				case Probe::MessageType::TERMINATED:
 					{
-						// Probe destroyed, remove from probe list.		
-						for (std::vector<ProbeRecord>::iterator itr = m_probes.begin();
-							itr != m_probes.end();){
-							if (itr->id == msg.id){
-								itr = m_probes.erase(itr);
-								break;
-							}
-							else{
-								itr++;
-							}
-						}
+						
 
 						// Trigger GUI event to remove probe.
 						--m_shields;

@@ -179,6 +179,15 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 				MessageBox(hwnd, "The fleet has been destroyed!", "Failure", 
 						   MB_OK | MB_ICONWARNING | MB_SETFOREGROUND);
 				break;
+
+			case GUIEventType::FLEET_SURVIVED:
+				EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_ADD_PROBE), TRUE);
+				SetDlgItemText(hwnd, IDC_STATIC_STATUS, "Fleet Status: Standing By");
+				tfc->reset();
+				MessageBox(hwnd, "The fleet successfully nagivated the asteroid field"
+						   " and has arrived at Talos IV!", "Success",
+						   MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND);
+				break;
 			}
 		}
 

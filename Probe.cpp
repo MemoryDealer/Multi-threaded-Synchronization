@@ -23,7 +23,7 @@ m_generator()
 {
 	// Allocate timer for scout probe.
 	if (m_type == Probe::Type::SCOUT){		
-		m_generator.seed(GetTickCount64());
+		m_generator.seed(GetTickCount());
 	}
 	else if (m_type == Probe::Type::PHOTON){
 		m_weaponRechargeTime = 3000;
@@ -199,6 +199,7 @@ void Probe::update(void)
 		case Probe::Type::PHOTON:
 			// Connect to TFC and send defensive request.
 			Probe::Message msg;
+			msg.id = m_id;
 			msg.type = Probe::MessageType::DEFENSIVE_REQUEST;
 			int s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
 			if (s > 0){
@@ -209,38 +210,24 @@ void Probe::update(void)
 					if (msg.type == Probe::MessageType::TARGET_AVAILABLE){
 						// See if we have time to destroy the asteroid.
 						Uint timeRequired = this->timeRequired(msg.asteroid);
-						printf("------------\nTime required to destroy asteroid: %d\nCurrentTime: %d\nTimeFound: %d\nImpactTime: %d\n------------\n", 
-								timeRequired, msg.time, msg.asteroid.discoveryTime, msg.asteroid.impactTime);
-						if (msg.time + timeRequired < msg.asteroid.impactTime){
-							printf("\tThere is time.\n");
+						
+						// Destroy the asteroid.
+						Timer::Delay(timeRequired);
 
-							// Destroy the asteroid.
-							Timer::Delay(timeRequired);
-
-							// Asteroid destroyed, report to TFC.
-							ZeroMemory(&msg, sizeof(msg));
-							msg.type = Probe::MessageType::TARGET_DESTROYED;
-							msg.id = m_id;
-							s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
-							if (s > 0){
+						// Asteroid destroyed, report to TFC.
+						ZeroMemory(&msg, sizeof(msg));
+						msg.type = Probe::MessageType::TARGET_DESTROYED;
+						msg.id = m_id;
+						s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+						if (s > 0){
 											
-							}
-
-							// Allow weapon to recharge.
-							Timer::Delay(m_weaponRechargeTime);
 						}
-						else{
-							printf("\tNo time! Collision imminent!\n");
-							//Timer::Delay(msg.asteroid.impactTime - msg.time);
 
-							// Report termination to TFC.								
-							ZeroMemory(&msg, sizeof(msg));
-							msg.type = Probe::MessageType::TERMINATED;
-							msg.id = m_id;
-							s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
-							m_state = Probe::State::DESTROYED;								
-							break;
-						}
+						// Allow weapon to recharge.
+						Timer::Delay(m_weaponRechargeTime);
+					}
+					else if (msg.type == Probe::MessageType::DESTRUCT){
+						m_state = Probe::State::DESTROYED;
 					}
 					else if(msg.type == Probe::MessageType::NO_TARGET){
 						Timer::Delay(500);

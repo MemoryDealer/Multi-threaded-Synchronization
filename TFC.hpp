@@ -43,7 +43,8 @@ enum GUIEventType{
 	ASTEROID_DESTROYED,
 	SHIELDS_HIT,
 	PROBE_TERMINATED,
-	FLEET_DESTROYED
+	FLEET_DESTROYED,
+	FLEET_SURVIVED
 };
 
 // ================================================ //
