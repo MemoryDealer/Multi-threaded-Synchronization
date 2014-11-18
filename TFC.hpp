@@ -94,11 +94,18 @@ public:
 	// Returns number of asteroids destroyed.
 	const Uint getNumAsteroidsDestroyed(void) const;
 
+	// Returns true if fleet is currently in asteroid field.
+	const bool isInAsteroidField(void) const;
+
+	// Returns number of phaser probes launched before navigating field.
+	const Uint getNumPhaserProbesLaunched(void) const;
+
 	// Setters
 
 	// --- //
 
 	static const std::string Port;
+	static bool RunArtificialProbes;
 
 private:
 	AsteroidContainer m_asteroids;
@@ -111,6 +118,7 @@ private:
 	std::shared_ptr<Timer> m_pClock;
 	std::queue<GUIEvent> m_guiEvents;
 	bool m_scoutActive;
+	Uint m_numPhaserProbesLaunched;
 };
 
 // ================================================ //
@@ -118,6 +126,7 @@ private:
 inline void TFC::enterAsteroidField(void){
 	m_inAsteroidField = true;
 	m_pClock->restart();
+	TFC::RunArtificialProbes = true;
 }
 
 // Getters
@@ -154,6 +163,14 @@ inline const Uint TFC::getShields(void) const{
 
 inline const Uint TFC::getNumAsteroidsDestroyed(void) const{
 	return m_asteroidsDestroyed;
+}
+
+inline const bool TFC::isInAsteroidField(void) const{
+	return m_inAsteroidField;
+}
+
+inline const Uint TFC::getNumPhaserProbesLaunched(void) const{
+	return m_numPhaserProbesLaunched;
 }
 
 // Setters

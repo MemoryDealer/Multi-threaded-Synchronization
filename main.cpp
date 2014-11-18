@@ -174,29 +174,40 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 
 			case GUIEventType::FLEET_DESTROYED:
 				EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_ADD_PROBE), TRUE);				
-				SetDlgItemText(hwnd, IDC_STATIC_STATUS, "Fleet Status: Standing By");
+				SetDlgItemText(hwnd, IDC_STATIC_STATUS, "Fleet Status: Standing By");				
+				{
+					std::string msg = "The fleet has been destroyed.\r\n\r\n" +
+						toString(tfc->getNumPhaserProbesLaunched()) + " phaser probes used.";
+					MessageBox(hwnd, msg.c_str(), "Failure",
+							   MB_OK | MB_ICONWARNING | MB_SETFOREGROUND);
+				}			
 				tfc->reset();
-				MessageBox(hwnd, "The fleet has been destroyed!", "Failure", 
-						   MB_OK | MB_ICONWARNING | MB_SETFOREGROUND);
 				break;
 
 			case GUIEventType::FLEET_SURVIVED:
 				EnableWindow(GetDlgItem(hwnd, IDC_BUTTON_ADD_PROBE), TRUE);
-				SetDlgItemText(hwnd, IDC_STATIC_STATUS, "Fleet Status: Standing By");
+				SetDlgItemText(hwnd, IDC_STATIC_STATUS, "Fleet Status: Standing By");				
+				{
+					std::string msg = "The fleet successfully nagivated the asteroid field"
+						" and has arrived at Talos IV!\r\n\r\n" + 
+						toString(tfc->getNumPhaserProbesLaunched()) +
+						" phaser probes used.";
+					MessageBox(hwnd, msg.c_str(), "Success",
+							   MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND);
+				}				
 				tfc->reset();
-				MessageBox(hwnd, "The fleet successfully nagivated the asteroid field"
-						   " and has arrived at Talos IV!", "Success",
-						   MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND);
 				break;
 			}
 		}
 
 		// Update elapsed time.
-		if (update.getTicks() > 1000){
-			Uint time = tfc->getCurrentTime() / 1000;
-			std::string buf("Current time: " + toString(time));
-			SetDlgItemText(hwnd, IDC_STATIC_TIME, buf.c_str());
-			update.restart();
+		if (tfc->isInAsteroidField()){
+			if (update.getTicks() > 1000){
+				Uint time = tfc->getCurrentTime() / 1000;
+				std::string buf("Current time: " + toString(time));
+				SetDlgItemText(hwnd, IDC_STATIC_TIME, buf.c_str());
+				update.restart();
+			}
 		}
 	}
 }
@@ -214,6 +225,10 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 	// Get next GUIEvent from TFC...
 	// perhaps use a thread to check and then force GUI update
+
+	if (GetAsyncKeyState(VK_ESCAPE)){
+		PostMessage(hwnd, WM_QUIT, 0, 0);
+	}
 
 	switch (msg){
 	default:
@@ -291,7 +306,7 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 			SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_ADDSTRING, 0,
 							   reinterpret_cast<LPARAM>("Class M planet Talos IV discovered."));
-			SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, 0x194, static_cast<WPARAM>(250), 0);
+			SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_SETHORIZONTALEXTENT, static_cast<WPARAM>(500), 0);
 
 			// Create thread for updating time.
 			std::thread t(&UpdateGUI, hwnd, &tfc);
@@ -301,6 +316,22 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 	case WM_CTLCOLORDLG:
 		return reinterpret_cast<LONG>(hBackground);
+
+	case WM_CTLCOLORSTATIC:
+		SetBkMode(reinterpret_cast<HDC>(wParam), TRANSPARENT);
+		if (reinterpret_cast<HWND>(lParam) == GetDlgItem(hwnd, IDC_STATIC_STATUS)){
+			//SetBkColor(reinterpret_cast<HDC>(wParam), RGB(0, 0, 0));
+			SetTextColor(reinterpret_cast<HDC>(wParam), RGB(215, 64, 64));
+		}
+		return reinterpret_cast<LRESULT>(hBackground);
+
+	case WM_CTLCOLORLISTBOX:
+		// Only one listbox to color.
+		SetBkColor(reinterpret_cast<HDC>(wParam), RGB(0, 0, 0));
+		SetTextColor(reinterpret_cast<HDC>(wParam), RGB(255, 80, 80));
+		return reinterpret_cast<LONG>(CreateSolidBrush(RGB(0, 0, 0)));
+
+
 
 	case WM_COMMAND:
 		switch (LOWORD(wParam)){

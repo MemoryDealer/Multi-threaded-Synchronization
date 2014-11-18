@@ -130,7 +130,7 @@ bool Probe::launch(void)
 
 void Probe::update(void)
 {
-	while (m_state != Probe::State::DESTROYED){		
+	while (m_state != Probe::State::DESTROYED && TFC::RunArtificialProbes == true){		
 		switch (m_type){
 		default:
 			break;
@@ -165,6 +165,10 @@ void Probe::update(void)
 
 							case Probe::MessageType::SCOUT_REQUEST:
 
+								break;
+
+							case Probe::MessageType::DESTRUCT:
+								m_state = Probe::State::DESTROYED;
 								break;
 							}
 						}
@@ -206,30 +210,52 @@ void Probe::update(void)
 				ZeroMemory(&msg, sizeof(msg));
 				int r = recv(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
 				if (r > 0){
-					if (msg.type == Probe::MessageType::TARGET_AVAILABLE){
-						// See if we have time to destroy the asteroid.
-						Uint timeRequired = this->timeRequired(msg.asteroid);
-						
-						// Destroy the asteroid.
-						Timer::Delay(timeRequired);
+					switch (msg.type){
+					default:
+						break;
 
-						// Asteroid destroyed, report to TFC.
-						ZeroMemory(&msg, sizeof(msg));
-						msg.type = Probe::MessageType::TARGET_DESTROYED;
-						msg.id = m_id;
-						s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
-						if (s > 0){
-											
+					case Probe::MessageType::TARGET_AVAILABLE:
+						{
+							Uint timeRequired = this->timeRequired(msg.asteroid);
+
+							// See if we have time to destroy the asteroid.
+							if (msg.time + timeRequired < msg.asteroid.impactTime){
+								// Destroy the asteroid.
+								Timer::Delay(timeRequired);
+
+								// Asteroid destroyed, report to TFC.
+								ZeroMemory(&msg, sizeof(msg));
+								msg.type = Probe::MessageType::TARGET_DESTROYED;
+								msg.id = m_id;
+								s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+								if (s > 0){
+
+								}
+
+								// Allow weapon to recharge.
+								Timer::Delay(m_weaponRechargeTime);
+							}
+							else{
+								// Ram the asteroid and report probe termination.
+								printf("Probe has no time!!!\n");
+
+								ZeroMemory(&msg, sizeof(msg));
+								msg.type = Probe::MessageType::TERMINATED;
+								msg.id = m_id;
+								s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+								m_state = Probe::State::DESTROYED;
+								break;
+							}
 						}
+						break;
 
-						// Allow weapon to recharge.
-						Timer::Delay(m_weaponRechargeTime);
-					}
-					else if (msg.type == Probe::MessageType::DESTRUCT){
+					case Probe::MessageType::DESTRUCT:
 						m_state = Probe::State::DESTROYED;
-					}
-					else if(msg.type == Probe::MessageType::NO_TARGET){
+						break;
+
+					case Probe::MessageType::NO_TARGET:
 						Timer::Delay(500);
+						break;
 					}
 				}
 			}
@@ -268,8 +294,73 @@ const Uint Probe::timeRequired(const Asteroid& a)
 
 const Uint Probe::scoutDiscoveryTime(void)
 {
-	std::poisson_distribution<int> poissonDistribution(4.0);
-	return (poissonDistribution(m_generator) * 1000);
+	// C++11 method (not used).
+	/*std::poisson_distribution<int> poissonDistribution(4.0);
+	return (poissonDistribution(m_generator) * 1000);*/
+
+	std::uniform_real_distribution<double> poissonDistribution(0.0, 1.0);
+
+	double x = poissonDistribution(m_generator);
+	double deviate = 0.0;
+	if (x == 0.0)     //Interpolate between points on
+		deviate = 0.0;  //graph.
+	else if (x <= 0.1)
+		deviate = ((x - 0.0) * 1.04 + 0.0);
+	else if (x <= 0.2)
+		deviate = ((x - 0.1) * 1.18 + 0.104);
+	else if (x <= 0.3)
+		deviate = ((x - 0.2) * 1.33 + 0.222);
+	else if (x <= 0.4)
+		deviate = ((x - 0.3) * 1.54 + 0.355);
+	else if (x <= 0.5)
+		deviate = ((x - 0.4) * 1.81 + 0.509);
+	else if (x <= 0.6)
+		deviate = ((x - 0.5) * 2.25 + 0.690);
+	else if (x <= 0.7)
+		deviate = ((x - 0.6) * 2.85 + 0.915);
+	else if (x <= 0.75)
+		deviate = ((x - 0.70) * 3.60 + 1.2);
+	else if (x <= 0.8)
+		deviate = ((x - 0.75) * 4.40 + 1.38);
+	else if (x <= 0.84)
+		deviate = ((x - 0.8) * 5.75 + 1.60);
+	else if (x <= 0.88)
+		deviate = ((x - 0.84) * 7.25 + 1.83);
+	else if (x <= 0.9)
+		deviate = ((x - 0.88) * 9.00 + 2.12);
+	else if (x <= 0.92)
+		deviate = ((x - 0.90) * 11.0 + 2.30);
+	else if (x <= 0.94)
+		deviate = ((x - 0.92) * 14.5 + 2.52);
+	else if (x <= 0.95)
+		deviate = ((x - 0.94) * 18.0 + 2.81);
+	else if (x <= 0.96)
+		deviate = ((x - 0.95) * 21.0 + 2.99);
+	else if (x <= 0.97)
+		deviate = ((x - 0.96) * 30.0 + 3.20);
+	else if (x <= 0.98)
+		deviate = ((x - 0.97) * 40.0 + 3.50);
+	else if (x <= 0.99)
+		deviate = ((x - 0.98) * 70.0 + 3.90);
+	else if (x <= 0.995)
+		deviate = ((x - 0.99) * 140.0 + 4.60);
+	else if (x <= 0.998)
+		deviate = ((x - 0.995) * 300.0 + 5.30);
+	else if (x <= 0.999)
+		deviate = ((x - 0.998) * 800.0 + 6.20);
+	else
+		deviate = ((x - 0.9997) * 1000.0 + 8.0);
+
+	// Calculate with mean of 4.0.
+	deviate *= 4.0;
+
+	// Round up.
+	deviate = std::round(deviate);
+
+	// Convert to milliseconds.
+	deviate *= 1000.0;
+	printf("deviate=%.2f\n", deviate);
+	return static_cast<Uint>(deviate);
 }
 
 // ================================================ //
