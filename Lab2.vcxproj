@@ -88,7 +88,6 @@
     <ClInclude Include="Probe.hpp" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="Semaphore.hpp" />
-    <ClInclude Include="Singleton.hpp" />
     <ClInclude Include="stdafx.hpp" />
     <ClInclude Include="TFC.hpp" />
     <ClInclude Include="Timer.hpp" />

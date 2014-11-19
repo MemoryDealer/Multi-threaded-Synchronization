@@ -52,6 +52,7 @@ typedef unsigned int Uint;
 // ================================================ //
 
 // Converts anything to a std::string.
+// (Placed here for easy global access).
 template<typename T>
 static std::string toString(const T& value)
 {

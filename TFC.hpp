@@ -13,7 +13,6 @@
 
 #include "Asteroid.hpp"
 #include "Probe.hpp"
-#include "Net.hpp"
 #include "Timer.hpp"
 #include "Semaphore.hpp"
 
