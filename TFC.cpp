@@ -32,7 +32,11 @@ m_scoutActive(false),
 m_numPhaserProbesLaunched(0)
 {
 	int ret = this->init();
-	printf("setupServer() = %d\n", ret);
+	if (ret != 0){
+		std::string str = "TFC failed to initialize server (Error: "
+			+ toString(ret) + ").";
+		throw std::exception(str.c_str());
+	}
 }
 
 // ================================================ //
@@ -47,7 +51,6 @@ TFC::~TFC(void)
 int TFC::init(void)
 {
 	struct addrinfo* result = nullptr;
-	struct addrinfo* ptr = nullptr;
 	struct addrinfo hints;
 
 	ZeroMemory(&hints, sizeof(hints));
@@ -98,36 +101,20 @@ int TFC::init(void)
 
 // ================================================ //
 
-void TFC::reset(void)
-{
-	m_probes.clear();
-	m_fleetAlive = true;
-	m_shields = 5;
-	m_asteroidsDestroyed = m_numPhaserProbesLaunched = 0;
-	m_scoutActive = false;
-	m_pClock->stop();
-	TFC::RunArtificialProbes = false;
-}
-
-// ================================================ //
-
 void TFC::launchProbes(void)
 {
-	while (true){
+	while (m_fleetAlive){
 		// Accept incoming probe requests.
 		struct sockaddr_in probeInfo = { 0 };
 		int size = sizeof(probeInfo);
-		SOCKET probeSocket = accept(m_socket, reinterpret_cast<struct sockaddr*>(&probeInfo), &size);
+		SOCKET probeSocket = accept(m_socket, 
+									reinterpret_cast<struct sockaddr*>(&probeInfo), 
+									&size);
 		if (probeSocket == INVALID_SOCKET){
 			printf("TFC: accept() failed: %ld\n", WSAGetLastError());
 			closesocket(probeSocket);
 			continue;
 		}
-
-		// Store remote IP address and port.
-		char* host = inet_ntoa(probeInfo.sin_addr);
-		int port = ntohs(probeInfo.sin_port);
-		IPAddress ip(host, port);
 
 		// Receive the request.
 		int r = 0;
@@ -135,19 +122,18 @@ void TFC::launchProbes(void)
 		r = recv(probeSocket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
 		if (r > 0){
 			if (m_inAsteroidField == false){
-				if (msg.type == Probe::MessageType::LAUNCH_REQUEST){
-					printf("Launch request received from %s:%d.\n", host, port);
-
+				if (msg.type == Probe::MessageType::LAUNCH_REQUEST){					
 					// Send a launch confirmation back to the probe, as well as the ID.
 					static Uint probeIDCtr = 0;
 					Probe::Message confirm;
 					confirm.type = Probe::MessageType::CONFIRM_LAUNCH;
 					confirm.id = probeIDCtr++;
 
-					int s = send(probeSocket, reinterpret_cast<const char*>(&confirm), sizeof(confirm), 0);
+					int s = send(probeSocket, 
+								 reinterpret_cast<const char*>(&confirm), 
+								 sizeof(confirm), 
+								 0);
 					if (s > 0){
-						printf("Sent launch confirmation, adding to probe list.\n");
-
 						// Add probe to TFC list of probes.
 						ProbeRecord probe;
 						probe.socket = probeSocket;
@@ -156,7 +142,6 @@ void TFC::launchProbes(void)
 						if (probe.type == Probe::Type::PHASER){
 							++m_numPhaserProbesLaunched;
 						}
-						probe.state = 0;
 						m_probes.push_back(probe);
 
 						// Spawn a thread to handle the new probe.
@@ -167,20 +152,16 @@ void TFC::launchProbes(void)
 			}
 			// Don't allow new probe launches while navigating asteroid field.
 			else{
-				
+				closesocket(probeSocket);
 			}
-		}
-		else{
-			// Report error...
-		}
-	}
+		} // if (r > 0)
+	} // while(m_fleetAlive)
 }
 
 // ================================================ //
 
 void TFC::updateProbe(const ProbeRecord& probe)
 {
-	printf("New updateProbe() thread with ID = %d\n", probe.id);
 	bool probeAlive = true;
 
 	while (m_fleetAlive && probeAlive){
@@ -193,20 +174,23 @@ void TFC::updateProbe(const ProbeRecord& probe)
 				if (m_scoutActive == false){
 					Probe::Message activate;
 					activate.type = Probe::MessageType::SCOUT_REQUEST;
-					int s = send(probe.socket, reinterpret_cast<const char*>(&activate), sizeof(activate), 0);
+					int s = send(probe.socket, 
+								 reinterpret_cast<const char*>(&activate), 
+								 sizeof(activate), 
+								 0);
 					if (s > 0){
 						m_scoutActive = true;
 					}
 				}
 
-				// If only the scout probe remains, or shields are gone, trigger fleet destruction.
+				// If only the scout probe remains, or shields are gone, 
+				// trigger fleet destruction.
 				if (m_probes.size() == 1 || m_shields == 0){
 					m_fleetAlive = m_inAsteroidField = false;
 					Timer::Delay(1500);
 					GUIEvent e;
 					e.type = GUIEventType::FLEET_DESTROYED;
 					m_guiEvents.push(e);
-					// signal probes to terminate...
 				}
 				else if (m_asteroidsDestroyed > 55){
 					m_inAsteroidField = false;
@@ -226,7 +210,7 @@ void TFC::updateProbe(const ProbeRecord& probe)
 					break;
 
 				case Probe::MessageType::LAUNCH_REQUEST:
-					// Only accept launch requests when not in asteroid field.					
+					// Only accept launch requests while not in asteroid field.
 					break;
 
 				case Probe::MessageType::SCOUT_REQUEST:
@@ -235,10 +219,10 @@ void TFC::updateProbe(const ProbeRecord& probe)
 						// Ack request.
 						response.type = Probe::MessageType::SCOUT_REQUEST;
 						response.time = m_pClock->getTicks();
-						int s = send(probe.socket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
-						if (s > 0){
-
-						}
+						int s = send(probe.socket, 
+									 reinterpret_cast<const char*>(&response), 
+									 sizeof(response), 
+									 0);
 					}
 					break;
 
@@ -251,6 +235,7 @@ void TFC::updateProbe(const ProbeRecord& probe)
 						++m_asteroidsDestroyed;
 					}
 					else{
+						// Producer:
 						// Wait for synchronized access to asteroid array.
 						m_empty.wait();
 						m_mutex.wait();
@@ -277,6 +262,7 @@ void TFC::updateProbe(const ProbeRecord& probe)
 							response.type = Probe::MessageType::NO_TARGET;
 						}
 						else{
+							// Consumer:
 							// Wait turn, prevent race conditions.							
 							m_full.wait();
 							m_mutex.wait();
@@ -289,8 +275,6 @@ void TFC::updateProbe(const ProbeRecord& probe)
 								Asteroid a = m_asteroids.remove();
 
 								Uint time = m_pClock->getTicks();
-								printf("------------\nCurrentTime: %d\nTimeFound: %d\nImpactTime: %d\n------------\n",
-									   time, a.discoveryTime, a.impactTime);
 								// See if there is time to destroy next asteroid.
 								// [if (current time < time found + time to collision)]
 								if (time < a.impactTime){
@@ -321,15 +305,14 @@ void TFC::updateProbe(const ProbeRecord& probe)
 						}
 
 						// Send the requested data to the probe.
-						int s = send(probe.socket, reinterpret_cast<const char*>(&response), sizeof(response), 0);
-						if (s > 0){
-
-						}
+						int s = send(probe.socket, 
+									 reinterpret_cast<const char*>(&response), 
+									 sizeof(response), 
+									 0);
 					}
 					break;
 
 				case Probe::MessageType::TARGET_DESTROYED:
-					printf("TARGET DESTROYED!\n");
 					++m_asteroidsDestroyed;
 					{
 						GUIEvent e;
@@ -365,8 +348,10 @@ void TFC::updateProbe(const ProbeRecord& probe)
 				}
 			}
 		}
+		// If not in asteroid field.
 		else{
-			Timer::Delay(1);
+			// Wait for TFC to engage asteroid field.
+			Timer::Delay(100);
 		}		
 	}
 

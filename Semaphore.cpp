@@ -10,10 +10,10 @@
 
 // ================================================ //
 
-Semaphore::Semaphore(const int count) :
+Semaphore::Semaphore(const Uint count) :
 m_count(count),
 m_mutex(),
-m_cv()
+m_cr()
 {
 
 }
@@ -22,7 +22,7 @@ m_cv()
 
 Semaphore::~Semaphore(void)
 {
-	//m_mutex.unlock();
+	
 }
 
 // ================================================ //
@@ -32,7 +32,7 @@ void Semaphore::wait(void)
 	std::unique_lock<std::mutex> lock(m_mutex);
 
 	while (m_count == 0){
-		m_cv.wait(lock);
+		m_cr.wait(lock);
 	}
 	--m_count;
 }
@@ -43,7 +43,7 @@ void Semaphore::signal(void)
 {	
 	std::unique_lock<std::mutex> lock(m_mutex);
 	++m_count;
-	m_cv.notify_one();
+	m_cr.notify_one();
 }
 
 // ================================================ //

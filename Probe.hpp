@@ -33,9 +33,6 @@ public:
 	// Thread which processes probe actions.
 	void update(void);
 
-	// Prints an error message with Probe ID.
-	void reportError(const char* msg);
-
 	// Returns time required in milliseconds to destroy Asteroid a.
 	const Uint timeRequired(const Asteroid& a);
 
@@ -76,7 +73,6 @@ public:
 		DEFENSIVE_REQUEST,
 		ASTEROID_FOUND,
 		TARGET_AVAILABLE,
-		DESTRUCT,
 		NO_TARGET,
 		TARGET_DESTROYED,
 		TERMINATED
@@ -84,16 +80,20 @@ public:
 
 	// A network message.
 	struct Message{
+		// Type of message.
 		int type;
+		// Timestamp from TFC.
 		Uint time;
 		// Use a union to minimize data sent over sockets.
 		union{
+			// Request for launch.
 			struct{
+				// Type of probe.
 				Uint type;
 			} LaunchRequest;
-
+			// Probe ID.
 			Uint id;
-
+			// Asteroid data.
 			Asteroid asteroid;
 		};
 	};

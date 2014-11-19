@@ -14,7 +14,7 @@ class Semaphore
 {
 public:
 	// Initializes member variables.
-	Semaphore(const int count = 0);
+	Semaphore(const Uint count = 0);
 
 	// Empty destructor.
 	~Semaphore(void);
@@ -26,9 +26,9 @@ public:
 	void signal(void);
 
 private:
-	int m_count;
+	Uint m_count;
 	std::mutex m_mutex;
-	std::condition_variable m_cv;
+	std::condition_variable m_cr;
 };
 
 // ================================================ //

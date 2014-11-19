@@ -54,6 +54,7 @@ bool Probe::launch(void)
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_protocol = IPPROTO_TCP;
 
+	// Connect locally as artificial probe.
 	int i = getaddrinfo("127.0.0.1", TFC::Port.c_str(), &hints, &m_server);
 	if (i != 0){
 		return false;
@@ -74,9 +75,6 @@ bool Probe::launch(void)
 		m_socket = INVALID_SOCKET;
 	}
 
-	// No longer needed.
-	//freeaddrinfo(result);
-
 	if (m_socket == INVALID_SOCKET){
 		printf("PROBE: Unable to connect to server: %ld\n", WSAGetLastError());
 		return false;
@@ -94,9 +92,6 @@ bool Probe::launch(void)
 		return false;
 	}
 
-	printf("Bytes sent: %ld\n", i);
-	
-
 	// Wait for confirmation of launch.
 	ZeroMemory(&msg, sizeof(msg));
 	i = recv(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
@@ -108,18 +103,16 @@ bool Probe::launch(void)
 	if (i > 0){
 		if (msg.type == MessageType::CONFIRM_LAUNCH){
 			// Launch confirmed, save ID assigned by TFC.
-			m_id = msg.id;
-			printf("Probe %d has received confirmation to launch.\n", m_id);			
+			m_id = msg.id;			
 			std::thread t(&Probe::update, this);
 			t.detach();
 		}
 		else{
-			printf("Probe %d denied launch.\n", m_id);
 			return false;
 		}
 	}
 	else{
-		printf("Connection closed.\n");
+		// Connection closed by server.
 		return false;
 	}
 
@@ -130,7 +123,7 @@ bool Probe::launch(void)
 
 void Probe::update(void)
 {
-	while (m_state != Probe::State::DESTROYED && TFC::RunArtificialProbes == true){		
+	while (m_state != Probe::State::DESTROYED && TFC::RunArtificialProbes == true){
 		switch (m_type){
 		default:
 			break;
@@ -153,31 +146,27 @@ void Probe::update(void)
 					// distribution.															
 					Timer::Delay(this->scoutDiscoveryTime());
 
+					// Tell TFC scout is about to report new asteroid.
 					msg.type = Probe::MessageType::SCOUT_REQUEST;
 					int s = send(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
 					if (s > 0){
 						ZeroMemory(&msg, sizeof(msg));
 						int r = recv(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
 						if (r > 0){
-							switch (msg.type){
-							default:
-								break;
-
-							case Probe::MessageType::SCOUT_REQUEST:
-
-								break;
-
-							case Probe::MessageType::DESTRUCT:
-								m_state = Probe::State::DESTROYED;
+							// Only proceed with corresponding TFC response.
+							if (msg.type != Probe::MessageType::SCOUT_REQUEST){
 								break;
 							}
+						}
+						else{
+							break;
 						}
 					}
 
 					// Allocate data for newly discovered asteroid.
 					static Uint asteroidIDCtr = 0;
 					Asteroid asteroid;
-					asteroid.id = asteroidIDCtr++;					
+					asteroid.id = asteroidIDCtr++;
 					asteroid.discoveryTime = msg.time;
 
 					// Determine asteroid mass based on step function.
@@ -191,9 +180,6 @@ void Probe::update(void)
 					msg.type = Probe::MessageType::ASTEROID_FOUND;
 					msg.asteroid = asteroid;
 					s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
-					if (s > 0){
-
-					}
 				}
 			}
 			break;
@@ -227,30 +213,28 @@ void Probe::update(void)
 								ZeroMemory(&msg, sizeof(msg));
 								msg.type = Probe::MessageType::TARGET_DESTROYED;
 								msg.id = m_id;
-								s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
-								if (s > 0){
-
-								}
+								s = send(m_socket, 
+										 reinterpret_cast<const char*>(&msg), 
+										 sizeof(msg), 
+										 0);
 
 								// Allow weapon to recharge.
 								Timer::Delay(m_weaponRechargeTime);
 							}
 							else{
+								Timer::Delay((msg.time + timeRequired) - msg.asteroid.impactTime);
 								// Ram the asteroid and report probe termination.
-								printf("Probe has no time!!!\n");
-
 								ZeroMemory(&msg, sizeof(msg));
 								msg.type = Probe::MessageType::TERMINATED;
 								msg.id = m_id;
-								s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
+								s = send(m_socket, 
+										 reinterpret_cast<const char*>(&msg), 
+										 sizeof(msg), 
+										 0);
 								m_state = Probe::State::DESTROYED;
 								break;
 							}
 						}
-						break;
-
-					case Probe::MessageType::DESTRUCT:
-						m_state = Probe::State::DESTROYED;
 						break;
 
 					case Probe::MessageType::NO_TARGET:
@@ -264,13 +248,6 @@ void Probe::update(void)
 	}
 
 	closesocket(m_socket);
-}
-
-// ================================================ //
-
-void Probe::reportError(const char* msg)
-{
-
 }
 
 // ================================================ //
@@ -298,9 +275,9 @@ const Uint Probe::scoutDiscoveryTime(void)
 	/*std::poisson_distribution<int> poissonDistribution(4.0);
 	return (poissonDistribution(m_generator) * 1000);*/
 
-	std::uniform_real_distribution<double> poissonDistribution(0.0, 1.0);
+	std::uniform_real_distribution<double> distribution(0.0, 1.0);
 
-	double x = poissonDistribution(m_generator);
+	double x = distribution(m_generator);
 	double deviate = 0.0;
 	if (x == 0.0)     //Interpolate between points on
 		deviate = 0.0;  //graph.
@@ -359,7 +336,6 @@ const Uint Probe::scoutDiscoveryTime(void)
 
 	// Convert to milliseconds.
 	deviate *= 1000.0;
-	printf("deviate=%.2f\n", deviate);
 	return static_cast<Uint>(deviate);
 }
 

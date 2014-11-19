@@ -19,25 +19,24 @@
 
 // ================================================ //
 
-struct ProbeRecord{	
+// Record for storing probe data on TFC.
+struct ProbeRecord{
 	SOCKET socket;
 	Uint id;
 	Uint type;
-	Uint state;
 };
 
+// Any event to be processed by the GUI update thread.
 struct GUIEvent{
 	Uint type;
 	union{
 		Asteroid asteroid;
-		char buffer[255];
 		int x;
 	};
 };
 
 enum GUIEventType{
 	NONE = 0,
-	UPDATE,
 	ASTEROID_FOUND,
 	ASTEROID_REMOVED,
 	ASTEROID_DESTROYED,
@@ -61,9 +60,6 @@ public:
 	// Sets up server socket, binds and begins listening.
 	// Returns zero on success, otherwise the error code is returned.
 	int init(void);
-
-	// Resets all internal variables to prepare for another simulation.
-	void reset(void);
 
 	// Sets the local flag m_inAsteroidField to true.
 	void enterAsteroidField(void);
@@ -100,16 +96,18 @@ public:
 	// Returns number of phaser probes launched before navigating field.
 	const Uint getNumPhaserProbesLaunched(void) const;
 
-	// Setters
-
 	// --- //
 
+	// Port the TFC listens on.
 	static const std::string Port;
+	// All artificial probe threads will stop if this is false.
 	static bool RunArtificialProbes;
 
 private:
 	AsteroidContainer m_asteroids;
+	// Semaphores for synchronized access to AsteroidContainer.
 	Semaphore m_mutex, m_empty, m_full;
+	// List of all probes that have been launched.
 	std::vector<ProbeRecord> m_probes;
 	SOCKET m_socket;
 	bool m_fleetAlive, m_inAsteroidField;
@@ -172,9 +170,6 @@ inline const bool TFC::isInAsteroidField(void) const{
 inline const Uint TFC::getNumPhaserProbesLaunched(void) const{
 	return m_numPhaserProbesLaunched;
 }
-
-// Setters
-
 
 // ================================================ //
 
