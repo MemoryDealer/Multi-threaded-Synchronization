@@ -105,6 +105,8 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 					// Update number of asteroids in stack.
 					buffer = "Asteroids (Count: " + toString(asteroidIndex) + ")";
 					SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, buffer.c_str());
+
+					printf("***Asteroid %d added to list\n\n", e.asteroid.id);
 				}
 				break;
 
@@ -119,8 +121,18 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 					}
 					--asteroidIndex;
 
+					// Update asteroids awaiting destruction.
+					std::string buffer = "Asteroids Awaiting Destruction: " + 
+						toString(55 - tfc->getNumAsteroidsDestroyed());
+					SetDlgItemText(hwnd, IDC_STATIC_NUMASTEROIDS, buffer.c_str());
+
+					// Update asteroids destroyed.
+					buffer = "Asteroids Successfully Destroyed: " +
+						toString(tfc->getNumAsteroidsDestroyed());
+					SetDlgItemText(hwnd, IDC_STATIC_ASTEROIDS_DESTROYED, buffer.c_str());
+
 					// Update TFC log.
-					std::string buffer = "Asteroid " + toString(e.x) + " removed from queue.";
+					buffer = "Asteroid " + toString(e.x) + " removed from queue.";
 					UpdateLog(hwnd, buffer);
 
 					// Update number of asteroids in stack.

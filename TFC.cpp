@@ -227,11 +227,11 @@ void TFC::updateProbe(const ProbeRecord& probe)
 				case Probe::MessageType::ASTEROID_FOUND:
 					if (m_asteroids.full()){
 						--m_shields;
+						++m_asteroidsDestroyed;
 						GUIEvent e;
 						e.type = GUIEventType::ASTEROID_COLLISION;
 						e.id = msg.asteroid.id;
-						m_guiEvents.push(e);
-						++m_asteroidsDestroyed;
+						m_guiEvents.push(e);						
 					}					
 					else{			
 						// Producer:
@@ -267,11 +267,13 @@ void TFC::updateProbe(const ProbeRecord& probe)
 						}
 						else{
 							bool asteroidFound = false;
+							Asteroid a;
 							// Keep retrieving the next asteroid until a valid
 							// one is found.
+							ZeroMemory(&a, sizeof(a));
 							while (asteroidFound == false && m_asteroids.empty() == false){
 								// Acquire next asteroid.
-								Asteroid a = m_asteroids.remove();
+								a = m_asteroids.remove();
 
 								Uint time = m_pClock->getTicks();
 								// See if there is time to destroy next asteroid.
@@ -286,9 +288,10 @@ void TFC::updateProbe(const ProbeRecord& probe)
 								else{
 									// Take hit on shields and report to GUI.
 									--m_shields;
+									++m_asteroidsDestroyed;
 									GUIEvent e;
 									e.type = GUIEventType::ASTEROID_COLLISION;
-									e.id = msg.asteroid.id;
+									e.id = a.id;
 									m_guiEvents.push(e);									
 								}
 
@@ -312,9 +315,9 @@ void TFC::updateProbe(const ProbeRecord& probe)
 					}
 					break;
 
-				case Probe::MessageType::TARGET_DESTROYED:
-					++m_asteroidsDestroyed;
+				case Probe::MessageType::TARGET_DESTROYED:					
 					{
+						++m_asteroidsDestroyed;
 						GUIEvent e;
 						e.type = GUIEventType::ASTEROID_DESTROYED;
 						e.id = probe.id;
@@ -342,7 +345,7 @@ void TFC::updateProbe(const ProbeRecord& probe)
 								break;
 							}
 							else{
-								itr++;
+								++itr;
 							}
 						}
 					}
