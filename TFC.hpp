@@ -28,6 +28,7 @@ struct ProbeRecord{
 // Any event to be processed by the GUI update thread.
 struct GUIEvent{
 	Uint type;
+	int id;
 	union{
 		Asteroid asteroid;
 		int x;
@@ -39,7 +40,7 @@ enum GUIEventType{
 	ASTEROID_FOUND,
 	ASTEROID_REMOVED,
 	ASTEROID_DESTROYED,
-	SHIELDS_HIT,
+	ASTEROID_COLLISION,
 	PROBE_TERMINATED,
 	FLEET_DESTROYED,
 	FLEET_SURVIVED
@@ -110,7 +111,7 @@ private:
 	std::vector<ProbeRecord> m_probes;
 	SOCKET m_socket;
 	bool m_fleetAlive, m_inAsteroidField;
-	Uint m_shields;
+	int m_shields;
 	Uint m_asteroidsDestroyed;
 	std::shared_ptr<Timer> m_pClock;
 	std::queue<GUIEvent> m_guiEvents;

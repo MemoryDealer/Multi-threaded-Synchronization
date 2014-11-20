@@ -107,6 +107,7 @@ private:
 	int m_weaponRechargeTime;
 	int m_weaponPower;
 	std::default_random_engine m_generator;
+	DWORD m_lastTick;
 };
 
 // ================================================ //

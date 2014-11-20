@@ -103,7 +103,7 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 					UpdateLog(hwnd, buffer);
 
 					// Update number of asteroids in stack.
-					buffer = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
+					buffer = "Asteroids (Count: " + toString(asteroidIndex) + ")";
 					SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, buffer.c_str());
 				}
 				break;
@@ -124,7 +124,7 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 					UpdateLog(hwnd, buffer);
 
 					// Update number of asteroids in stack.
-					buffer = "Asteroid Stack (Size: " + toString(asteroidIndex) + ")";
+					buffer = "Asteroids (Count: " + toString(asteroidIndex) + ")";
 					SetDlgItemText(hwnd, IDC_STATIC_LIST_ASTEROIDS_TITLE, buffer.c_str());
 				}
 				break;
@@ -141,31 +141,37 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 						toString(tfc->getNumAsteroidsDestroyed());
 					SetDlgItemText(hwnd, IDC_STATIC_ASTEROIDS_DESTROYED, buffer.c_str());
 
-					buffer = "Asteroid destroyed by probe " + toString(e.x);
+					buffer = "Asteroid " + toString(e.x) + " destroyed by probe " + 
+						toString(e.id);
 					UpdateLog(hwnd, buffer);
 				}
 				break;
 
-			case GUIEventType::SHIELDS_HIT:
+			case GUIEventType::ASTEROID_COLLISION:
 				UpdateShields(hwnd, tfc->getShields());
-				UpdateLog(hwnd, "Shields hit!");
+				{
+					std::string buffer = "Asteroid " + toString(e.id) +
+						" collided with TFC!";
+					UpdateLog(hwnd, buffer);
+				}
 				break;
 
 			case GUIEventType::PROBE_TERMINATED:			
 				{
 					// Remove probe from listview.
 					HWND hList = GetDlgItem(hwnd, IDC_LIST_PROBES);
-					int index = GetListviewItemIndex(hList, 0, toString(e.x));
+					int index = GetListviewItemIndex(hList, 0, toString(e.id));
 					if (index != -1){
 						SendMessage(hList, LVM_DELETEITEM, static_cast<WPARAM>(index), 0);
 					}
 
 					// Update number of probes.
-					std::string buffer = "Launched Probes (Size: " +
+					std::string buffer = "Launched Probes (Count: " +
 						toString(tfc->getNumProbes()) + ")";
 					SetDlgItemText(hwnd, IDC_STATIC_LIST_PROBES_TITLE, buffer.c_str());
 
-					buffer = "Probe " + toString(e.x) + " lost!";
+					buffer = "Probe " + toString(e.id) + " lost to asteroid " +
+						toString(e.x) + "!";
 					UpdateLog(hwnd, buffer);
 				}
 				break;
@@ -200,7 +206,7 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 		if (tfc->isInAsteroidField()){
 			if (update.getTicks() > 1000){
 				Uint time = tfc->getCurrentTime() / 1000;
-				std::string buf("Current time: " + toString(time));
+				std::string buf("Elapsed Time: " + toString(time));
 				SetDlgItemText(hwnd, IDC_STATIC_TIME, buf.c_str());
 				update.restart();
 			}
@@ -291,14 +297,14 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			}
 
 			// Update probe listview title.
-			std::string buf("Launched Probes (Size: " + toString(probes.size()) + 
+			std::string buf("Launched Probes (Count: " + toString(probes.size()) + 
 							std::string(")"));
 			SetDlgItemText(hwnd, IDC_STATIC_LIST_PROBES_TITLE, buf.c_str());
 
 			// Allow horizontal scrolling of update listbox.
 			SendDlgItemMessage(hwnd, IDC_LIST_TFC_UPDATES, LB_SETHORIZONTALEXTENT, 
 							   static_cast<WPARAM>(500), 0);
-			UpdateLog(hwnd, "Class M planet Talos IV found.");			
+			UpdateLog(hwnd, "Class M planet Talos IV found.");
 
 			// Create thread for updating time.
 			std::thread t(&UpdateGUI, hwnd, &tfc);
@@ -313,6 +319,9 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		SetBkMode(reinterpret_cast<HDC>(wParam), TRANSPARENT);
 		if (reinterpret_cast<HWND>(lParam) == GetDlgItem(hwnd, IDC_STATIC_STATUS)){
 			SetTextColor(reinterpret_cast<HDC>(wParam), RGB(215, 64, 64));
+		}
+		else if (reinterpret_cast<HWND>(lParam) == GetDlgItem(hwnd, IDC_STATIC_TIME)){
+			SetTextColor(reinterpret_cast<HDC>(wParam), RGB(64, 64, 225));
 		}
 		return reinterpret_cast<LRESULT>(hBackground);
 
@@ -348,7 +357,7 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 								   Probe::Type::PHASER, probe->getState());
 
 					// Update listview title.
-					std::string buf("Launched Probes (Size: " + toString(probes.size()) + 
+					std::string buf("Launched Probes (Count: " + toString(probes.size()) + 
 									std::string(")"));
 					SetDlgItemText(hwnd, IDC_STATIC_LIST_PROBES_TITLE, buf.c_str());
 				}
@@ -384,9 +393,13 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 }
 
 // ================================================ //
-
+#define _DEBUG
 //int main(int argc, char** argv)
+#ifdef _DEBUG
+int main(int argc, char** argv)
+#else
 int APIENTRY WinMain(HINSTANCE hHinst, HINSTANCE hPrevInst, LPSTR args, int numArgs)
+#endif
 {
 	// Initialize Winsock, begin using WS2_32.DLL.
 	WSAData wsaData;
@@ -402,7 +415,8 @@ int APIENTRY WinMain(HINSTANCE hHinst, HINSTANCE hPrevInst, LPSTR args, int numA
 		ICC_STANDARD_CLASSES;
 	InitCommonControlsEx(&iccx);
 
-	int ret = DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_MAIN), NULL, MainProc);
+	// Create the dialog (GUI), this activates the callback MainProc().
+	int ret = DialogBox(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_MAIN), HWND_DESKTOP, MainProc);
 
 	// Terminate use of WS2_32.DLL.
 	WSACleanup();

@@ -70,7 +70,7 @@ inline const bool AsteroidContainer::full(void) const{
 // ================================================ //
 
 // ================================================ //
-// A container with stack operations.
+// A container with queue operations.
 //class AsteroidContainer
 //{
 //public:

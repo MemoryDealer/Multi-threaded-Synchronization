@@ -19,7 +19,8 @@ m_socket(INVALID_SOCKET),
 m_server(nullptr),
 m_weaponRechargeTime(0),
 m_weaponPower(0),
-m_generator()
+m_generator(),
+m_lastTick(GetTickCount())
 {
 	// Allocate timer for scout probe.
 	if (m_type == Probe::Type::SCOUT){		
@@ -192,7 +193,7 @@ void Probe::update(void)
 			msg.type = Probe::MessageType::DEFENSIVE_REQUEST;
 			int s = send(m_socket, reinterpret_cast<const char*>(&msg), sizeof(msg), 0);
 			if (s > 0){
-				// Receive data.
+				// Receive response from TFC.
 				ZeroMemory(&msg, sizeof(msg));
 				int r = recv(m_socket, reinterpret_cast<char*>(&msg), sizeof(msg), 0);
 				if (r > 0){
@@ -206,30 +207,40 @@ void Probe::update(void)
 
 							// See if we have time to destroy the asteroid.
 							if (msg.time + timeRequired < msg.asteroid.impactTime){
+								printf("Probe %d acquired data for asteroid %d\n\n",
+									   m_id, msg.asteroid.id);
 								// Destroy the asteroid.
 								Timer::Delay(timeRequired);
 
 								// Asteroid destroyed, report to TFC.
-								ZeroMemory(&msg, sizeof(msg));
-								msg.type = Probe::MessageType::TARGET_DESTROYED;
-								msg.id = m_id;
+								Probe::Message response;
+								ZeroMemory(&response, sizeof(response));
+								response.type = Probe::MessageType::TARGET_DESTROYED;
+								response.id = msg.asteroid.id;
 								s = send(m_socket, 
-										 reinterpret_cast<const char*>(&msg), 
-										 sizeof(msg), 
+										 reinterpret_cast<const char*>(&response),
+										 sizeof(response),
 										 0);
 
 								// Allow weapon to recharge.
 								Timer::Delay(m_weaponRechargeTime);
+
+								printf("=> Probe %d destroyed asteroid %d in %d milliseconds\n\tElapsed: %d\n\n",
+									   m_id, msg.asteroid.id, timeRequired,
+									   (GetTickCount() - m_lastTick) * Timer::Multiplier);
+								m_lastTick = GetTickCount();
 							}
 							else{
+								// Delay any remaining time until impact.
 								Timer::Delay((msg.time + timeRequired) - msg.asteroid.impactTime);
-								// Ram the asteroid and report probe termination.
-								ZeroMemory(&msg, sizeof(msg));
-								msg.type = Probe::MessageType::TERMINATED;
-								msg.id = m_id;
+								// Then report probe termination and ram the asteroid.
+								Probe::Message response;
+								ZeroMemory(&response, sizeof(response));
+								response.type = Probe::MessageType::TERMINATED;
+								response.id = msg.asteroid.id;
 								s = send(m_socket, 
-										 reinterpret_cast<const char*>(&msg), 
-										 sizeof(msg), 
+										 reinterpret_cast<const char*>(&response),
+										 sizeof(response),
 										 0);
 								m_state = Probe::State::DESTROYED;
 								break;
@@ -331,8 +342,8 @@ const Uint Probe::scoutDiscoveryTime(void)
 	// Calculate with mean of 4.0.
 	deviate *= 4.0;
 
-	// Round up.
-	deviate = std::round(deviate);
+	// Round up?
+	//deviate = std::round(deviate);
 
 	// Convert to milliseconds.
 	deviate *= 1000.0;

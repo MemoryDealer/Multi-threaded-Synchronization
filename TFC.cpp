@@ -35,7 +35,8 @@ m_numPhaserProbesLaunched(0)
 	if (ret != 0){
 		std::string str = "TFC failed to initialize server (Error: "
 			+ toString(ret) + ").";
-		throw std::exception(str.c_str());
+		MessageBox(GetForegroundWindow(), str.c_str(), "Error!", 
+				   MB_OK | MB_ICONERROR | MB_SETFOREGROUND);
 	}
 }
 
@@ -183,18 +184,15 @@ void TFC::updateProbe(const ProbeRecord& probe)
 					}
 				}
 
-				// If only the scout probe remains, or shields are gone, 
-				// trigger fleet destruction.
-				if (m_probes.size() == 1 || m_shields == 0){
+				// If shields are gone, trigger fleet destruction.
+				if (m_shields <= 0){
 					m_fleetAlive = m_inAsteroidField = false;
-					Timer::Delay(1500);
 					GUIEvent e;
 					e.type = GUIEventType::FLEET_DESTROYED;
 					m_guiEvents.push(e);
 				}
 				else if (m_asteroidsDestroyed > 55){
 					m_inAsteroidField = false;
-					Timer::Delay(1500);
 					GUIEvent e;
 					e.type = GUIEventType::FLEET_SURVIVED;
 					m_guiEvents.push(e);
@@ -230,11 +228,12 @@ void TFC::updateProbe(const ProbeRecord& probe)
 					if (m_asteroids.full()){
 						--m_shields;
 						GUIEvent e;
-						e.type = GUIEventType::SHIELDS_HIT;
+						e.type = GUIEventType::ASTEROID_COLLISION;
+						e.id = msg.asteroid.id;
 						m_guiEvents.push(e);
 						++m_asteroidsDestroyed;
-					}
-					else{
+					}					
+					else{			
 						// Producer:
 						// Wait for synchronized access to asteroid array.
 						m_empty.wait();
@@ -257,16 +256,16 @@ void TFC::updateProbe(const ProbeRecord& probe)
 
 				case Probe::MessageType::DEFENSIVE_REQUEST:
 					{
+						// Consumer:
+						// Wait turn, prevent race conditions.							
+						m_full.wait();
+						m_mutex.wait();
+
 						Probe::Message response;
 						if (m_asteroids.empty()){
 							response.type = Probe::MessageType::NO_TARGET;
 						}
 						else{
-							// Consumer:
-							// Wait turn, prevent race conditions.							
-							m_full.wait();
-							m_mutex.wait();
-							
 							bool asteroidFound = false;
 							// Keep retrieving the next asteroid until a valid
 							// one is found.
@@ -288,7 +287,8 @@ void TFC::updateProbe(const ProbeRecord& probe)
 									// Take hit on shields and report to GUI.
 									--m_shields;
 									GUIEvent e;
-									e.type = GUIEventType::SHIELDS_HIT;
+									e.type = GUIEventType::ASTEROID_COLLISION;
+									e.id = msg.asteroid.id;
 									m_guiEvents.push(e);									
 								}
 
@@ -298,11 +298,11 @@ void TFC::updateProbe(const ProbeRecord& probe)
 								e.x = a.id;
 								m_guiEvents.push(e);
 							}
-
-							// Allow other probes to access asteroid queue.
-							m_mutex.signal();
-							m_empty.signal();
 						}
+
+						// Allow other probes to access asteroid queue.
+						m_mutex.signal();
+						m_empty.signal();
 
 						// Send the requested data to the probe.
 						int s = send(probe.socket, 
@@ -317,7 +317,8 @@ void TFC::updateProbe(const ProbeRecord& probe)
 					{
 						GUIEvent e;
 						e.type = GUIEventType::ASTEROID_DESTROYED;
-						e.x = probe.id;
+						e.id = probe.id;
+						e.x = msg.id;
 						m_guiEvents.push(e);
 					}
 					break;
@@ -328,14 +329,15 @@ void TFC::updateProbe(const ProbeRecord& probe)
 						// Trigger GUI event to remove probe.
 						GUIEvent e;
 						e.type = GUIEventType::PROBE_TERMINATED;
-						e.x = probe.id;
+						e.id = probe.id;
+						e.x = msg.id;
 						m_guiEvents.push(e);
 						probeAlive = false;
 
 						// Probe destroyed, remove from probe list.		
 						for (std::vector<ProbeRecord>::iterator itr = m_probes.begin();
 							 itr != m_probes.end();){
-							if (itr->id == msg.id){
+							if (itr->id == probe.id){
 								itr = m_probes.erase(itr);
 								break;
 							}
