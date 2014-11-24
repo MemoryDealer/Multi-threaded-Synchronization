@@ -78,7 +78,6 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Probe.cpp" />
     <ClCompile Include="Semaphore.cpp" />
-    <ClCompile Include="stdafx.cpp" />
     <ClCompile Include="TFC.cpp" />
     <ClCompile Include="Timer.cpp" />
   </ItemGroup>

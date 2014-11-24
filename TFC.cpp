@@ -13,7 +13,6 @@
 // ================================================ //
 
 const std::string TFC::Port = "27876";
-bool TFC::RunArtificialProbes = true;
 
 // ================================================ //
 
@@ -187,6 +186,7 @@ void TFC::updateProbe(const ProbeRecord& probe)
 				// If shields are gone, trigger fleet destruction.
 				if (m_shields <= 0){
 					m_fleetAlive = m_inAsteroidField = false;
+					// Force all probe threads to close.
 					GUIEvent e;
 					e.type = GUIEventType::FLEET_DESTROYED;
 					m_guiEvents.push(e);
@@ -303,7 +303,7 @@ void TFC::updateProbe(const ProbeRecord& probe)
 							}
 						}
 
-						// Allow other probes to access asteroid queue.
+						// Allow other probes to access asteroid buffer.
 						m_mutex.signal();
 						m_empty.signal();
 

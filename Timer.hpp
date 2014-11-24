@@ -48,10 +48,7 @@ public:
 	// Returns true if the timer is paused.
 	bool isPaused(void) const;
 
-	// Setters
-
-	// Manually set the start ticks value (determined by GetTickCount() when started).
-	void setStartTicks(const int ticks);
+	// --- //
 
 	// Delays the calling thread in ms.
 	static void Delay(const Uint ms);
@@ -77,12 +74,6 @@ inline bool Timer::isStarted(void) const{
 
 inline bool Timer::isPaused(void) const{
 	return m_paused;
-}
-
-// Setters
-
-inline void Timer::setStartTicks(const int ticks){
-	m_startTicks = ticks;
 }
 
 // ================================================ //

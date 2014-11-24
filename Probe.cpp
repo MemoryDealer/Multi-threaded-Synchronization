@@ -19,8 +19,7 @@ m_socket(INVALID_SOCKET),
 m_server(nullptr),
 m_weaponRechargeTime(0),
 m_weaponPower(0),
-m_generator(),
-m_lastTick(GetTickCount())
+m_generator()
 {
 	// Allocate timer for scout probe.
 	if (m_type == Probe::Type::SCOUT){		
@@ -124,7 +123,7 @@ bool Probe::launch(void)
 
 void Probe::update(void)
 {
-	while (m_state != Probe::State::DESTROYED && TFC::RunArtificialProbes == true){
+	while (m_state != Probe::State::DESTROYED){
 		switch (m_type){
 		default:
 			break;
@@ -224,11 +223,6 @@ void Probe::update(void)
 
 								// Allow weapon to recharge.
 								Timer::Delay(m_weaponRechargeTime);
-
-								printf("=> Probe %d destroyed asteroid %d in %d milliseconds\n\tElapsed: %d\n\n",
-									   m_id, msg.asteroid.id, timeRequired,
-									   (GetTickCount() - m_lastTick) * Timer::Multiplier);
-								m_lastTick = GetTickCount();
 							}
 							else{
 								// Delay any remaining time until impact.

@@ -90,6 +90,9 @@ public:
 	// Returns number of asteroids destroyed.
 	const Uint getNumAsteroidsDestroyed(void) const;
 
+	// Returns number of asteroids still in asteroid field.
+	const Uint getNumAsteroidsAwaitingDestruction(void) const;
+
 	// Returns true if fleet is currently in asteroid field.
 	const bool isInAsteroidField(void) const;
 
@@ -100,8 +103,6 @@ public:
 
 	// Port the TFC listens on.
 	static const std::string Port;
-	// All artificial probe threads will stop if this is false.
-	static bool RunArtificialProbes;
 
 private:
 	AsteroidContainer m_asteroids;
@@ -124,7 +125,6 @@ private:
 inline void TFC::enterAsteroidField(void){
 	m_inAsteroidField = true;
 	m_pClock->restart();
-	TFC::RunArtificialProbes = true;
 }
 
 // Getters
@@ -161,6 +161,11 @@ inline const Uint TFC::getShields(void) const{
 
 inline const Uint TFC::getNumAsteroidsDestroyed(void) const{
 	return m_asteroidsDestroyed;
+}
+
+inline const Uint TFC::getNumAsteroidsAwaitingDestruction(void) const{
+	return (m_asteroidsDestroyed <= 55) ? 55 - m_asteroidsDestroyed :
+		0;
 }
 
 inline const bool TFC::isInAsteroidField(void) const{

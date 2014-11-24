@@ -123,7 +123,7 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 
 					// Update asteroids awaiting destruction.
 					std::string buffer = "Asteroids Awaiting Destruction: " + 
-						toString(55 - tfc->getNumAsteroidsDestroyed());
+						toString(tfc->getNumAsteroidsAwaitingDestruction());
 					SetDlgItemText(hwnd, IDC_STATIC_NUMASTEROIDS, buffer.c_str());
 
 					// Update asteroids destroyed.
@@ -145,7 +145,7 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 				{
 					// Update asteroids awaiting destruction.
 					std::string buffer = "Asteroids Awaiting Destruction: " + 
-						toString(55 - tfc->getNumAsteroidsDestroyed());
+						toString(tfc->getNumAsteroidsAwaitingDestruction());
 					SetDlgItemText(hwnd, IDC_STATIC_NUMASTEROIDS, buffer.c_str());
 
 					// Update asteroids destroyed.
@@ -193,10 +193,12 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 				{
 					std::string msg = "The fleet has been destroyed.\r\n\r\n" +
 						toString(tfc->getNumPhaserProbesLaunched()) + " phaser probes used.";
+
+					UpdateLog(hwnd, "Fleet destroyed!");
+
 					MessageBox(hwnd, msg.c_str(), "Failure",
 							   MB_OK | MB_ICONWARNING | MB_SETFOREGROUND);
-				}							
-				UpdateLog(hwnd, "Fleet destroyed!");
+				}											
 				break;
 
 			case GUIEventType::FLEET_SURVIVED:
@@ -206,10 +208,21 @@ static void UpdateGUI(HWND hwnd, TFC* tfc)
 						" and has arrived at Talos IV!\r\n\r\n" + 
 						toString(tfc->getNumPhaserProbesLaunched()) +
 						" phaser probes used.";
+					// Update asteroids awaiting destruction.
+					std::string buffer = "Asteroids Awaiting Destruction: " +
+						toString(tfc->getNumAsteroidsAwaitingDestruction());
+					SetDlgItemText(hwnd, IDC_STATIC_NUMASTEROIDS, buffer.c_str());
+
+					// Update asteroids destroyed.
+					buffer = "Asteroids Successfully Destroyed: " +
+						toString(tfc->getNumAsteroidsDestroyed());
+					SetDlgItemText(hwnd, IDC_STATIC_ASTEROIDS_DESTROYED, buffer.c_str());
+
+					UpdateLog(hwnd, "Fleet arrived!");
+
 					MessageBox(hwnd, msg.c_str(), "Success",
 							   MB_OK | MB_ICONINFORMATION | MB_SETFOREGROUND);
-				}				
-				UpdateLog(hwnd, "Fleet arrived!");
+				}								
 				break;
 			}
 		}
@@ -359,8 +372,10 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 		case IDC_BUTTON_ADD_PROBE:
 			{				
-				// Allocate a new phaser probe and launch it
-				// (the TFC is running and will handle it).
+				// Allocate a new artificial phaser probe and launch it. 
+				// A Probe object is allocated and connects to the TFC server.
+				// If successful, it spawns a thread to run itself and the TFC
+				// also creates a thread to handle the Probe's socket.
 				std::shared_ptr<Probe> probe(new Probe(Probe::Type::PHASER));
 				if (probe->launch() == true){
 					probes.push_back(probe);
@@ -394,9 +409,7 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 		return FALSE;
 
-	case WM_CLOSE:
-		// Force all probe threads to close.
-		TFC::RunArtificialProbes = false;
+	case WM_CLOSE:		
 		EndDialog(hwnd, 0);
 		return FALSE;
 	}
@@ -405,13 +418,8 @@ static BOOL CALLBACK MainProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 }
 
 // ================================================ //
-#define _DEBUG
-//int main(int argc, char** argv)
-#ifdef _DEBUG
+
 int main(int argc, char** argv)
-#else
-int APIENTRY WinMain(HINSTANCE hHinst, HINSTANCE hPrevInst, LPSTR args, int numArgs)
-#endif
 {
 	// Initialize Winsock, begin using WS2_32.DLL.
 	WSAData wsaData;
