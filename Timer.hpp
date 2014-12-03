@@ -26,7 +26,7 @@ public:
 	~Timer(void);
 
 	// Starts the timer, erasing any previous time.
-	Uint restart(void);
+	const Uint restart(void);
 
 	// Stops the timer.
 	void stop(void);
@@ -38,15 +38,15 @@ public:
 	void unpause(void);
 
 	// Get the time in milliseconds since the timer was started.
-	Uint getTicks(void);
+	const Uint getTicks(void);
 
 	// Getters
 
 	// Returns true if the timer is active.
-	bool isStarted(void) const;
+	const bool isStarted(void) const;
 
 	// Returns true if the timer is paused.
-	bool isPaused(void) const;
+	const bool isPaused(void) const;
 
 	// --- //
 
@@ -68,11 +68,11 @@ private:
 
 // Getters
 
-inline bool Timer::isStarted(void) const{
+inline const bool Timer::isStarted(void) const{
 	return m_started;
 }
 
-inline bool Timer::isPaused(void) const{
+inline const bool Timer::isPaused(void) const{
 	return m_paused;
 }
 
